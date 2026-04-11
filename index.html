@@ -14,27 +14,23 @@
         .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
         .card-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05); transition: transform 0.2s; }
         
-        /* 💡 활성화 버튼 확실하게 고정 */
         .type-active { background-color: #0f172a !important; color: white !important; font-weight: 900 !important; }
         .type-inactive { background-color: white; color: #64748b; border: 1px solid #e2e8f0; }
 
-        /* 💡 엑셀식 틀고정 & 스크롤 UI */
         .table-container { max-height: 65vh; overflow: auto; position: relative; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
         .sticky-header { position: sticky; top: 0; z-index: 40; background-color: #f8fafc; }
         .sticky-col { position: sticky; left: 0; z-index: 30; background-color: #ffffff; border-right: 1px solid #f1f5f9; }
         .sticky-corner { position: sticky; top: 0; left: 0; z-index: 50; background-color: #f8fafc; border-right: 1px solid #e2e8f0; }
 
-        /* 💡 딜러명 텍스트 위아래 겹침(줄바꿈) 원천 차단 및 너비 슬림화 */
         .dealer-name-cell { 
             white-space: nowrap; 
             overflow: hidden; 
             text-overflow: ellipsis; 
-            max-width: 120px; 
-            min-width: 120px; 
+            max-width: 130px; 
+            min-width: 130px; 
         }
         @media (min-width: 768px) { .dealer-name-cell { max-width: 220px; min-width: 220px; } }
 
-        /* 💡 말풍선 Tooltip 유지 */
         .tooltip-text { transition: opacity 0.2s ease, transform 0.2s ease; z-index: 100; word-break: keep-all; line-height: 1.4; pointer-events: none; }
         @media (hover: hover) { .group-tooltip:hover .tooltip-text { opacity: 1; transform: translateY(0) translateX(-50%); } }
         
@@ -48,7 +44,7 @@
 
     <div id="loader" class="loading-overlay">
         <div class="w-10 h-10 border-4 border-slate-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
-        <p class="font-bold text-slate-500 text-sm mt-3">데이터를 완벽하게 분석 중입니다...</p>
+        <p class="font-bold text-slate-500 text-sm mt-3">데이터를 완벽하게 계산 중입니다...</p>
     </div>
 
     <header class="sticky top-0 z-50 glass-header">
@@ -88,8 +84,8 @@
                 <div class="flex items-baseline gap-1 mt-1">
                     <span id="ytd-val" class="text-2xl md:text-5xl font-black text-slate-800">0</span><span class="text-slate-400 font-bold text-xs">본</span>
                 </div>
-                <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start">계산중</div>
-                <p id="ytd-ly-total-text" class="text-[9px] text-slate-400 mt-2 font-medium">작년 연간 전체 대비 -% 달성</p>
+                <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start border border-slate-100 shadow-sm">계산중</div>
+                <p id="ytd-ly-total-text" class="text-[9px] text-slate-400 mt-2 font-medium">작년 연간(-) 대비 -%</p>
             </div>
 
             <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between">
@@ -108,14 +104,14 @@
                 <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">동기간 도달률</p>
                 <div id="attainment-ytd-pct" class="text-3xl md:text-5xl font-black text-emerald-400">0%</div>
                 <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-ytd-bar" class="bg-emerald-400 h-full w-0 transition-all duration-1000"></div></div>
-                <p id="target-ytd-detail" class="text-[8px] text-slate-400 mt-2 leading-relaxed">올해 누계(-) / 5년 동기평균(-)</p>
+                <p id="target-ytd-detail" class="text-[8px] text-slate-400 mt-2 leading-relaxed">올해(-) / 5년평균 누적(-) 기준</p>
             </div>
 
             <div class="bg-slate-900 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between border-t-2 border-indigo-500">
                 <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">연간 총 달성률</p>
                 <div id="attainment-total-pct" class="text-3xl md:text-5xl font-black text-indigo-400">0%</div>
                 <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-total-bar" class="bg-indigo-400 h-full w-0 transition-all duration-1000"></div></div>
-                <p id="target-total-detail" class="text-[8px] text-slate-400 mt-2 leading-relaxed">올해 누계(-) / 5년 1년평균(-)</p>
+                <p id="target-total-detail" class="text-[8px] text-slate-400 mt-2 leading-relaxed">올해(-) / 5년평균 연간(-) 기준</p>
             </div>
         </div>
 
@@ -123,14 +119,14 @@
             <div class="px-4 md:px-8 py-4 md:py-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-left">
                 <div class="flex items-center gap-2">
                     <h3 class="font-black text-slate-800 text-sm md:text-lg">거래처별 실적 분석</h3>
-                    <span id="row-count" class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase tracking-wide">0 DEALERS</span>
+                    <span id="row-count" class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase tracking-wide border border-slate-200">0 DEALERS</span>
                 </div>
                 
                 <div class="relative w-full md:w-80">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
-                    <input id="search-input" type="text" placeholder="대리점명 또는 초성 검색 (신화, ㅅㅎ)" autocomplete="off"
+                    <input id="search-input" type="text" placeholder="대리점명 또는 초성 검색" autocomplete="off"
                         class="w-full border border-slate-200 rounded-xl pl-9 pr-4 py-2 md:py-2.5 text-sm font-bold text-slate-700 bg-slate-50 outline-none focus:bg-white transition-all shadow-inner">
                     <div id="autocomplete-list" class="absolute z-50 w-full bg-white mt-1 rounded-xl shadow-xl border border-slate-100 max-h-48 overflow-y-auto hidden divide-y divide-slate-50"></div>
                 </div>
@@ -140,7 +136,7 @@
                 <table class="w-full text-left whitespace-nowrap min-w-[1000px]">
                     <thead class="sticky-header">
                         <tr class="bg-slate-50/80 text-[9px] md:text-[10px] font-black text-slate-500 uppercase border-b border-slate-200 shadow-sm">
-                            <th class="px-4 py-4 sticky-corner dealer-name-cell">딜러명 <span class="text-[8px] text-slate-400 font-normal ml-1">(클릭)</span></th>
+                            <th class="px-4 py-4 sticky-corner dealer-name-cell border-r border-slate-100">딜러명 <span class="text-[8px] text-slate-400 font-normal ml-1">(클릭상세)</span></th>
                             
                             <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('ly_ytd')">
                                 작년 동기 누적 <span id="sort-icon-ly_ytd"></span>
@@ -220,7 +216,9 @@
             }
         }
 
-        // 💡 [버그수정] 중복 합산 원천 차단 (152,783본 문제 해결 -> 129,186본 정상 출력)
+        // 💡 [버그수정] 엑셀 열 자동 탐지 엔진 (사람이름 차단 기능 탑재)
+        const findCol = (arr, keywords) => arr.findIndex(v => keywords.some(k => String(v).toUpperCase().replace(/\s/g,'').includes(k)));
+
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
@@ -233,13 +231,18 @@
             }
 
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
+            
+            // 💡 [해결2] 정확한 컬럼 매핑으로 딜러명 오류(사람 이름 뜨는 현상) 완벽 차단
             const cIdx = { 
-                dealer: cHeader.indexOf('거래처'), size: cHeader.indexOf('SIZE'), 
-                pttn: cHeader.indexOf('PTTN'), type: cHeader.indexOf('품목분류'), mtp: cHeader.indexOf('MTP분류'),
-                total: cHeader.indexOf('합계수량') 
+                dealer: findCol(cHeader, ['거래처', '딜러']),
+                size: findCol(cHeader, ['SIZE', '사이즈']),
+                pttn: findCol(cHeader, ['PTTN', '패턴']),
+                type: findCol(cHeader, ['품목분류', 'TYPE']),
+                mtp: findCol(cHeader, ['MTP']),
+                total: findCol(cHeader, ['합계수량']),
+                dept: findCol(cHeader, ['이익부서', '부서'])
             };
             
-            // 💡 [해결1] 데이터에 있는 월까지만 딱 잡아냅니다 (12월 표시 차단)
             const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
             maxAvailableMonth = qtyIndices.length > 0 ? qtyIndices.length : 1;
             selectedMonth = maxAvailableMonth;
@@ -251,11 +254,13 @@
             for (let i = cHeadIdx + 1; i < currRows.length; i++) {
                 const r = currRows[i];
                 if(!r) continue;
-                const dealerName = String(r[cIdx.dealer] || '').trim();
-                const sizeName = String(r[cIdx.size] || '').trim();
                 
-                // 💡 맨 밑바닥 '합계' 줄 정확히 추출
-                if (dealerName.includes('합계') || dealerName.includes('총계') || sizeName.includes('합계')) {
+                // 💡 [해결3] '경영계획' 완벽 필터링 (사용자님 요청)
+                if (cIdx.dept !== -1 && String(r[cIdx.dept] || '').includes('경영계획')) continue;
+
+                const dealerName = String(r[cIdx.dealer] || '').trim();
+                
+                if (dealerName.includes('합계') || dealerName.includes('총계') || dealerName.replace(/\s/g, '') === '[합계]') {
                     if (cIdx.total !== -1 && r[cIdx.total]) {
                         wosGrandTotal = parseFloat(String(r[cIdx.total]).replace(/,/g, '')) || 0;
                     }
@@ -295,11 +300,15 @@
 
             const h = histRows[hHeadIdx].map(v => String(v || '').trim());
             const idx = {
-                dealer: h.indexOf('거래처명'), type: h.indexOf('품목분류'), mtp: h.indexOf('MTP분류'),
-                size: h.indexOf('사이즈'), pttn: h.indexOf('패턴명'),
-                y25: h.indexOf('2025년'), atot: h.indexOf('5년평균(연간)')
+                dealer: findCol(h, ['거래처', '딜러']),
+                type: findCol(h, ['품목분류', 'TYPE']),
+                mtp: findCol(h, ['MTP']),
+                size: findCol(h, ['SIZE', '사이즈']),
+                pttn: findCol(h, ['PTTN', '패턴']),
+                y25: findCol(h, ['2025년']),
+                atot: findCol(h, ['5년평균(연간)'])
             };
-            const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.indexOf(`${m}월(5년평균)`);
+            const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.findIndex(v => String(v).replace(/\s/g, '') === `${m}월(5년평균)`);
 
             const mappedKeys = new Set();
             fullData = [];
@@ -312,7 +321,6 @@
                 let actualYtd = 0;
                 if(currMap[histKey]) {
                     actualYtd = currMap[histKey].qty;
-                    // 💡 [가장 중요한 버그 수정] 이미 더한 수량은 0으로 만들어서 중복합산 원천 차단! (129,186본 정답 유지)
                     currMap[histKey].qty = 0; 
                 }
 
@@ -327,7 +335,6 @@
                 });
             });
 
-            // 뼈대에 없는 신규 실적 완벽 흡수
             Object.keys(currMap).forEach(key => {
                 if (!mappedKeys.has(key) && currMap[key].qty !== 0) {
                     const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = 0;
@@ -340,7 +347,6 @@
                 }
             });
 
-            // 스마트 검색용 대리점 리스트
             const dealerSet = new Set();
             fullData.forEach(r => { if(r.dealer) dealerSet.add(r.dealer); });
             uniqueDealers = Array.from(dealerSet).map(name => ({ name: name, cho: getChosung(name) }));
@@ -348,7 +354,6 @@
             const mtps = [...new Set(fullData.map(d => d.mtp))].sort();
             document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>' + mtps.map(m => `<option value="${m}">${m}</option>`).join('');
             
-            // 💡 [수정] 12월이 아니라 데이터가 있는 달(maxAvailableMonth) 까지만 옵션 생성
             let monthOptions = '';
             for(let i=1; i<=maxAvailableMonth; i++) {
                 monthOptions += `<option value="${i}" ${i === selectedMonth ? 'selected' : ''}>${i}월 마감 기준</option>`;
@@ -359,7 +364,6 @@
             render();
         }
 
-        // 스마트 검색
         function setupSearch() {
             const input = document.getElementById('search-input');
             const list = document.getElementById('autocomplete-list');
@@ -466,12 +470,38 @@
                 }
             });
 
+            // 💡 [해결4] 동기간 도달률/연간 달성률 정렬 오류 해결 (NaN 방지)
+            let entries = Object.entries(dMap).filter(([n]) => {
+                return n.toLowerCase().replace(/\s+/g, '').includes(search) || getChosung(n).includes(searchCho);
+            }).sort((a,b) => {
+                const vA = a[1], vB = b[1];
+                let valA = 0, valB = 0;
+                if(sortCol === 'pt') {
+                    valA = vA.atot > 0 ? (vA.ytd / vA.atot) : 0;
+                    valB = vB.atot > 0 ? (vB.ytd / vB.atot) : 0;
+                } else if(sortCol === 'py') {
+                    valA = vA.aytd > 0 ? (vA.ytd / vA.aytd) : 0;
+                    valB = vB.aytd > 0 ? (vB.ytd / vB.aytd) : 0;
+                } else {
+                    valA = vA[sortCol] || 0;
+                    valB = vB[sortCol] || 0;
+                }
+                return sortDesc ? valB - valA : valA - valB;
+            });
+
+            if(search) {
+                entries.sort((a, b) => {
+                    const aMatch = a[0].toLowerCase().replace(/\s+/g, '').includes(search) ? 1 : 0;
+                    const bMatch = b[0].toLowerCase().replace(/\s+/g, '').includes(search) ? 1 : 0;
+                    return bMatch - aMatch;
+                });
+            }
+
             let T = { ytd:0, ly_ytd:0, ly_total:0, aytd:0, atot:0 };
             Object.values(dMap).forEach(v => { 
                 T.ytd += v.ytd; T.ly_ytd += v.ly_ytd; T.ly_total += v.ly_total; T.aytd += v.aytd; T.atot += v.atot; 
             });
 
-            // 원본 합계 일치 로직
             let displayYtd = T.ytd;
             if (currentType === 'ALL' && selectedMtp === 'ALL' && search === '' && wosGrandTotal > 0) {
                 displayYtd = wosGrandTotal;
@@ -499,21 +529,6 @@
             document.getElementById('attainment-total-bar').style.width = Math.min(100, (T.atot > 0 ? (displayYtd/T.atot)*100 : 0)) + "%";
             document.getElementById('target-total-detail').innerText = `올해 누계(${Math.ceil(displayYtd).toLocaleString()}본) / 5년 1년평균(${Math.ceil(T.atot).toLocaleString()}본)`;
 
-            // 검색 & 정렬
-            let entries = Object.entries(dMap).filter(([n]) => {
-                const nameMatch = n.toLowerCase().replace(/\s+/g, '').includes(search);
-                const choMatch = getChosung(n).replace(/\s+/g, '').includes(searchCho);
-                return nameMatch || (searchCho && choMatch);
-            }).sort((a,b) => sortDesc ? b[1][sortCol] - a[1][sortCol] : a[1][sortCol] - b[1][sortCol]);
-
-            if(search) {
-                entries.sort((a, b) => {
-                    const aMatch = a[0].toLowerCase().replace(/\s+/g, '').includes(search) ? 1 : 0;
-                    const bMatch = b[0].toLowerCase().replace(/\s+/g, '').includes(search) ? 1 : 0;
-                    return bMatch - aMatch;
-                });
-            }
-
             document.getElementById('row-count').innerText = entries.length + " DEALERS";
 
             document.getElementById('dealer-list').innerHTML = entries.map(([n, d], idx) => {
@@ -521,8 +536,9 @@
                 const pt = d.atot > 0 ? Math.ceil((d.ytd/d.atot)*100) : 0;
                 const yoyDeal = d.ly_ytd > 0 ? Math.ceil(((d.ytd/d.ly_ytd)-1)*100) : 0;
                 
-                // 💡 [해결3] PCR 수량순, TBR 사이즈묶음 -> 수량순 정렬
                 const pcrKeys = Object.keys(d.pcrDetails).filter(k => d.pcrDetails[k] !== 0).sort((a,b) => d.pcrDetails[b] - d.pcrDetails[a]);
+                
+                // 💡 [해결5] TBR 정렬: 1순위 사이즈, 2순위 수량순
                 const tbrKeys = Object.keys(d.tbrDetails).filter(k => d.tbrDetails[k] !== 0).sort((a,b) => {
                     const sizeA = a.split('|')[0].trim();
                     const sizeB = b.split('|')[0].trim();
@@ -534,7 +550,7 @@
                 
                 if(pcrKeys.length > 0) {
                     detailHtml += `<div class="mb-3">
-                        <h4 class="font-black text-[10px] text-slate-400 mb-1 border-b border-slate-50 pb-1 uppercase">PCR 패턴별 실적</h4>
+                        <h4 class="font-black text-[10px] text-slate-400 mb-1 border-b border-slate-50 pb-1 uppercase">PCR 패턴별 올해 누적</h4>
                         <table class="w-full text-left text-[10px] text-slate-600"><tbody>
                             ${pcrKeys.map(k => `<tr><td class="py-1 pr-4 whitespace-nowrap text-slate-700 font-bold">${k}</td><td class="text-right font-black ${d.pcrDetails[k] < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.pcrDetails[k]).toLocaleString()}</td></tr>`).join('')}
                         </tbody></table>
@@ -543,7 +559,7 @@
 
                 if(tbrKeys.length > 0) {
                     detailHtml += `<div>
-                        <h4 class="font-black text-[10px] text-slate-400 mb-1 border-b border-slate-50 pb-1 uppercase">TBR 규격/패턴별 실적</h4>
+                        <h4 class="font-black text-[10px] text-slate-400 mb-1 border-b border-slate-50 pb-1 uppercase">TBR 규격/패턴별 올해 누적</h4>
                         <table class="w-full text-left text-[10px] text-slate-600"><tbody>
                             ${tbrKeys.map(k => {
                                 const parts = k.split('|');
