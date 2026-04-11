@@ -1,34 +1,39 @@
-name: Hourly Sales Update
+name: Sales Data Hourly Update
 
 on:
   schedule:
-    # 월-금, 한국시간 09:10 ~ 20:10까지 매시간 10분에 실행
+    # 월-금, 한국시간 09:10 ~ 20:10 (매시간 10분 실행)
     - cron: '10 0-11 * * 1-5'
-  workflow_dispatch: 
+  workflow_dispatch: # 필요할 때 언제든 'Run workflow' 버튼으로 돌릴 수 있습니다.
+
+# 💡 403 에러 방지를 위한 필수 쓰기 권한 설정
+permissions:
+  contents: write
 
 jobs:
-  build:
+  run-automation:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4 
+      - name: 리포지토리 체크아웃
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5 
+      - name: 파이썬 설정
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+      - name: 필수 라이브러리 설치
+        run: pip install -r requirements.txt
 
-      - name: Run Python Script
+      - name: 데이터 수집 및 실적 업데이트 실행
         env:
           WOS_ID: ${{ secrets.WOS_ID }}
           WOS_PW: ${{ secrets.WOS_PW }}
-        run: python main.py 
+        run: python main.py
 
-      - name: Commit and Push
-        uses: stefanzweifel/git-auto-commit-action@v5 
+      - name: 변경사항 깃허브에 커밋 및 푸시
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "실적 데이터 자동 업데이트 완료"
+          commit_message: "매시간 자동 업데이트: current_sales.xlsx 갱신 완료"
+          # 💡 사용자님 말씀대로 이 파일만 계속 갈아 끼우도록 설정했습니다.
+          file_pattern: 'current_sales.xlsx'
