@@ -239,35 +239,48 @@
             }
         }
 
-        // 💡 [수정] 헤더 행을 좀 더 깊고 정확하게 찾는 함수 추가
+        // 💡 [핵심수정] 사람 이름 거르는 철통 보안 탐지기
+        const findCol = (arr, keywords, excludeWords = []) => {
+            // 1순위: 지정한 키워드(예: '거래처명')와 글자가 완벽히 똑같은 열 먼저 찾기
+            for (let k of keywords) {
+                const exactIdx = arr.findIndex(v => String(v).replace(/\s/g, '').toUpperCase() === k);
+                if (exactIdx !== -1) return exactIdx;
+            }
+            
+            // 2순위: 완벽 일치가 없으면 단어가 포함된 열을 찾되, 담당자/사원 관련 단어가 있으면 무조건 차단!
+            return arr.findIndex(v => {
+                const str = String(v).toUpperCase().replace(/\s/g, '');
+                const hasKeyword = keywords.some(k => str.includes(k));
+                const hasExclude = excludeWords.length > 0 && excludeWords.some(e => str.includes(e));
+                return hasKeyword && !hasExclude;
+            });
+        };
+
         function findHeaderRowIndex(rows, requiredKeywords) {
             for (let i = 0; i < Math.min(20, rows.length); i++) {
                 if (!rows[i]) continue;
                 const rowStr = rows[i].map(v => String(v || '').toUpperCase().replace(/\s/g, '')).join('|');
-                
-                // 필수 키워드들이 모두 포함되어 있는지 확인
                 const isMatch = requiredKeywords.every(k => rowStr.includes(k.toUpperCase().replace(/\s/g, '')));
                 if (isMatch) return i;
             }
-            return 0; // 못 찾으면 첫 번째 줄을 반환
+            return 0;
         }
 
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
-            // 💡 [핵심수정] current_sales.xlsx 에서 정확히 '거래처'와 'SIZE'가 있는 행 찾기
             const cHeadIdx = findHeaderRowIndex(currRows, ['거래처', 'SIZE']);
-            const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim().replace(/\s/g, '')); // 공백 제거하여 매칭 확률 높임
+            const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim().replace(/\s/g, ''));
             
-            // 💡 [핵심수정] 명시적으로 엑셀의 열 이름을 찾아 인덱스를 매핑합니다.
+            // 💡 [핵심수정] 여기서 드디어 탐지기(findCol)를 사용합니다!
             const cIdx = { 
-                dealer: cHeader.findIndex(h => h.includes('거래처명') || h === '거래처'), // 담당자 열 방지
-                size: cHeader.findIndex(h => h.includes('SIZE') || h.includes('사이즈')),
-                pttn: cHeader.findIndex(h => h.includes('PTTN') || h.includes('패턴')),
-                type: cHeader.findIndex(h => h.includes('품목분류') || h === 'TYPE'),
-                mtp: cHeader.findIndex(h => h.includes('MTP')),
-                total: cHeader.findIndex(h => h.includes('합계수량')),
-                dept: cHeader.findIndex(h => h.includes('이익부서') || h.includes('부서'))
+                dealer: findCol(cHeader, ['거래처명', '거래처', '딜러명', '고객명'], ['담당', '사원', '대표', '이름', '성명', '코드', 'CODE', '영업', '그룹']),
+                size: findCol(cHeader, ['SIZE', '사이즈']),
+                pttn: findCol(cHeader, ['PTTN', '패턴']),
+                type: findCol(cHeader, ['품목분류', 'TYPE']),
+                mtp: findCol(cHeader, ['MTP']),
+                total: findCol(cHeader, ['합계수량']),
+                dept: findCol(cHeader, ['이익부서', '부서'])
             };
             
             const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
@@ -284,7 +297,6 @@
                 
                 if (cIdx.dept !== -1 && String(r[cIdx.dept] || '').includes('경영계획')) continue;
 
-                // 💡 [보안] 만약 dealer 열을 못 찾았으면 에러 방지를 위해 스킵
                 if(cIdx.dealer === -1) continue; 
                 const dealerName = String(r[cIdx.dealer] || '').trim();
                 
@@ -318,18 +330,18 @@
                 currMap[key].qty += totalQty;
             }
 
-            // 💡 [핵심수정] historical_data.xlsx 에서 정확히 '거래처명'과 '사이즈'가 있는 행 찾기
             const hHeadIdx = findHeaderRowIndex(histRows, ['거래처', '사이즈']);
             const hHeader = histRows[hHeadIdx].map(v => String(v || '').trim().replace(/\s/g, ''));
 
+            // 💡 [핵심수정] 과거 엑셀 데이터에서도 똑같이 적용합니다!
             const idx = {
-                dealer: hHeader.findIndex(h => h.includes('거래처명') || h === '거래처'),
-                type: hHeader.findIndex(h => h.includes('품목분류') || h === 'TYPE'),
-                mtp: hHeader.findIndex(h => h.includes('MTP')),
-                size: hHeader.findIndex(h => h.includes('SIZE') || h.includes('사이즈')),
-                pttn: hHeader.findIndex(h => h.includes('PTTN') || h.includes('패턴')),
-                y25: hHeader.findIndex(h => h.includes('2025년')),
-                atot: hHeader.findIndex(h => h.includes('5년평균(연간)'))
+                dealer: findCol(hHeader, ['거래처명', '거래처', '딜러명', '고객명'], ['담당', '사원', '대표', '이름', '성명', '코드', 'CODE', '영업', '그룹']),
+                type: findCol(hHeader, ['품목분류', 'TYPE']),
+                mtp: findCol(hHeader, ['MTP']),
+                size: findCol(hHeader, ['SIZE', '사이즈']),
+                pttn: findCol(hHeader, ['PTTN', '패턴']),
+                y25: findCol(hHeader, ['2025년']),
+                atot: findCol(hHeader, ['5년평균(연간)'])
             };
             const mIdx = {}; 
             for(let m=1; m<=12; m++) {
@@ -629,15 +641,4 @@
                 <tr id="detail-${idx}" class="hidden detail-row bg-slate-50/50">
                     <td colspan="7" class="p-0 border-b border-slate-100 relative">
                         <div class="sticky left-0 inline-block p-3 max-w-[100vw]">
-                            ${(pcrKeys.length===0 && tbrKeys.length===0) ? '<div class="p-4 text-xs text-slate-400">당해 실적 없음</div>' : detailHtml}
-                        </div>
-                    </td>
-                </tr>
-                `;
-            }).join('');
-        }
-
-        window.onload = init;
-    </script>
-</body>
-</html>
+                            ${(pcrKeys.length===0 && tbrKeys.length===0) ? '<div class="p-4 text-xs text-slate-400">당해 실적 없음</div>'
