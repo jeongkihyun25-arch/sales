@@ -14,17 +14,17 @@
         .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
         .card-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05); transition: transform 0.2s; }
         
-        /* 💡 버튼 활성화 상태 고정 */
-        .type-active { background-color: #0f172a !important; color: white !important; font-weight: 900; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* 💡 버튼 활성화 상태 시각화 */
+        .type-active { background-color: #0f172a !important; color: white !important; font-weight: 900; }
         .type-inactive { background-color: white; color: #64748b; border: 1px solid #e2e8f0; }
         
-        /* 💡 엑셀식 틀고정 (Sticky) */
+        /* 💡 엑셀 틀고정 스크롤 시스템 */
         .table-container { max-height: 65vh; overflow: auto; position: relative; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
         .sticky-header { position: sticky; top: 0; z-index: 40; background-color: #f8fafc; }
-        .sticky-col { position: sticky; left: 0; z-index: 30; background-color: #ffffff; border-right: 2px solid #f1f5f9; }
-        .sticky-corner { position: sticky; top: 0; left: 0; z-index: 50; background-color: #f8fafc; border-right: 2px solid #f1f5f9; }
+        .sticky-col { position: sticky; left: 0; z-index: 30; background-color: #ffffff; border-right: 1px solid #f1f5f9; }
+        .sticky-corner { position: sticky; top: 0; left: 0; z-index: 50; background-color: #f8fafc; border-right: 1px solid #e2e8f0; }
 
-        /* 💡 설명 풍선 (Tooltip) 복구 */
+        /* 💡 말풍선(Tooltip) 스타일 */
         .tooltip-text { transition: opacity 0.2s ease, transform 0.2s ease; z-index: 100; word-break: keep-all; line-height: 1.4; pointer-events: none; }
         @media (hover: hover) {
             .group-tooltip:hover .tooltip-text { opacity: 1; transform: translateY(0) translateX(-50%); }
@@ -39,7 +39,7 @@
 
     <div id="loader" class="loading-overlay">
         <div class="w-10 h-10 border-4 border-slate-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
-        <p class="font-bold text-slate-500 text-sm">세일즈 데이터를 분석 중입니다...</p>
+        <p class="font-bold text-slate-500 text-sm">데이터를 정밀 분석 중입니다...</p>
     </div>
 
     <header class="sticky top-0 z-50 glass-header">
@@ -53,7 +53,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <select id="mtp-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold bg-white shadow-sm outline-none">
+                <select id="mtp-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold bg-white max-w-[85px] md:max-w-none shadow-sm outline-none">
                     <option value="ALL">전체 MTP</option>
                 </select>
                 <select id="month-select" onchange="changeMonth()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold bg-white shadow-sm outline-none"></select>
@@ -62,69 +62,88 @@
     </header>
 
     <main id="main-content" class="max-w-7xl mx-auto px-4 md:px-6 py-5 hidden">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-10 text-left">
-            <div class="bg-white p-4 md:p-6 rounded-[1.2rem] card-shadow border border-slate-100 flex flex-col justify-between">
-                <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">올해 누적 (YTD)</p>
-                <div class="flex items-baseline gap-1 mt-1"><span id="ytd-val" class="text-2xl md:text-4xl font-black text-slate-800">0</span><span class="text-slate-400 font-bold text-xs">본</span></div>
-                <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start">계산중</div>
-                <p id="ytd-ly-total-text" class="text-[9px] text-slate-400 mt-2">작년 1년 전체 대비 -%</p>
+        <div class="flex justify-between items-end mb-4">
+            <div class="flex flex-col">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sales Performance Dashboard</span>
+                <h2 class="text-lg font-black text-slate-800">통합 실적 현황</h2>
             </div>
-            <div class="bg-white p-4 md:p-6 rounded-[1.2rem] card-shadow border border-slate-100 flex flex-col justify-between">
-                <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">작년 동기 누적</p>
-                <div class="flex items-baseline gap-1 mt-1 text-slate-400"><span id="ly-ytd-val" class="text-2xl md:text-4xl font-black">0</span><span class="text-slate-300 font-bold text-xs">본</span></div>
-                <p id="ytd-diff-text" class="text-[9px] text-slate-400 mt-2">동기 대비 -본 차이</p>
-            </div>
-            <div class="bg-slate-800 p-4 md:p-6 rounded-[1.2rem] text-white card-shadow flex flex-col justify-between">
-                <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">동기간 도달률</p>
-                <div id="attainment-ytd-pct" class="text-3xl md:text-4xl font-black text-emerald-400">0%</div>
-                <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-ytd-bar" class="bg-emerald-400 h-full w-0 transition-all duration-1000"></div></div>
-                <p id="target-ytd-detail" class="text-[8px] text-slate-400 mt-2">올해 누계(-) / 5년 평균(-)</p>
-            </div>
-            <div class="bg-slate-900 p-4 md:p-6 rounded-[1.2rem] text-white card-shadow flex flex-col justify-between border-t-2 border-indigo-500">
-                <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">연간 총 달성률</p>
-                <div id="attainment-total-pct" class="text-3xl md:text-4xl font-black text-indigo-400">0%</div>
-                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-total-bar" class="bg-indigo-400 h-full w-0 transition-all duration-1000"></div></div>
-                <p id="target-total-detail" class="text-[8px] text-slate-400 mt-2">올해 누계(-) / 5년 평균(-)</p>
+            <div id="update-time" class="text-[9px] md:text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg flex items-center gap-1 border border-slate-200">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                동기화 대기
             </div>
         </div>
 
-        <div class="bg-white rounded-[1.5rem] card-shadow border border-slate-100 overflow-hidden flex flex-col">
-            <div class="px-4 py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-10 text-left">
+            <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between group">
+                <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">올해 누적 (YTD)</p>
+                <div class="flex items-baseline gap-1 mt-1"><span id="ytd-val" class="text-2xl md:text-5xl font-black text-slate-800">0</span><span class="text-slate-400 font-bold text-xs">본</span></div>
+                <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start">계산중</div>
+                <p id="ytd-ly-total-text" class="text-[9px] text-slate-400 mt-2 font-medium">작년 1년 전체 대비 -% 달성</p>
+            </div>
+            <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between">
+                <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">작년 동기 누적</p>
+                <div class="flex items-baseline gap-1 mt-1 text-slate-400"><span id="ly-ytd-val" class="text-2xl md:text-5xl font-black">0</span><span class="text-slate-300 font-bold text-xs">본</span></div>
+                <p id="ytd-diff-text" class="text-[9px] text-slate-400 mt-2">동기 대비 -본 차이</p>
+            </div>
+            <div class="bg-slate-800 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between">
+                <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">동기간 도달률</p>
+                <div id="attainment-ytd-pct" class="text-3xl md:text-5xl font-black text-emerald-400">0%</div>
+                <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-ytd-bar" class="bg-emerald-400 h-full w-0 transition-all duration-1000"></div></div>
+                <p id="target-ytd-detail" class="text-[8px] text-slate-400 mt-2 leading-relaxed">올해 누계(-) / 5년 평균(-)</p>
+            </div>
+            <div class="bg-slate-900 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between border-t-2 border-indigo-500">
+                <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">연간 총 달성률</p>
+                <div id="attainment-total-pct" class="text-3xl md:text-5xl font-black text-indigo-400">0%</div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-total-bar" class="bg-indigo-400 h-full w-0 transition-all duration-1000"></div></div>
+                <p id="target-total-detail" class="text-[8px] text-slate-400 mt-2 leading-relaxed">올해 누계(-) / 5년 평균(-)</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[1.5rem] md:rounded-[2.5rem] card-shadow border border-slate-100 overflow-hidden flex flex-col h-full">
+            <div class="px-4 md:px-8 py-4 md:py-6 border-b border-slate-100 bg-white flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                 <div class="flex items-center gap-2">
-                    <h3 class="font-black text-slate-800">거래처별 실적 분석</h3>
-                    <span id="row-count" class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase">0 Dealers</span>
+                    <h3 class="font-black text-slate-800 text-sm md:text-lg">거래처별 실적 분석</h3>
+                    <span id="row-count" class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase tracking-wide border border-slate-200">0 Dealers</span>
                 </div>
-                <input id="search-input" oninput="render()" type="text" placeholder="대리점명 또는 초성 (신화, ㅅㅎ)" class="w-full md:w-80 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold bg-slate-50 focus:bg-white transition-all shadow-inner">
+                
+                <div class="relative w-full lg:w-80">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input id="search-input" type="text" placeholder="대리점명 또는 초성 (예: 신화, ㅅㅎ)" autocomplete="off"
+                        class="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-2 md:py-2.5 text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all shadow-inner">
+                    <div id="autocomplete-list" class="absolute z-50 w-full bg-white mt-2 rounded-xl shadow-xl border border-slate-100 max-h-60 overflow-y-auto hidden divide-y divide-slate-50"></div>
+                </div>
             </div>
 
             <div class="table-container">
-                <table class="w-full text-left whitespace-nowrap min-w-[900px]">
+                <table class="w-full text-left whitespace-nowrap min-w-[900px] md:min-w-[1100px]">
                     <thead class="sticky-header">
-                        <tr class="bg-slate-50 text-[9px] md:text-[10px] font-black text-slate-500 uppercase border-b border-slate-200 shadow-sm">
-                            <th class="px-6 py-4 sticky-corner">딜러명 (클릭 상세)</th>
+                        <tr class="bg-slate-50 text-[9px] md:text-[10px] font-black text-slate-500 uppercase border-b border-slate-200">
+                            <th class="px-6 py-4 sticky-corner border-r border-slate-100 shadow-sm">딜러명 (상세보기)</th>
                             <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('ly_ytd')">
                                 작년 동기 누적 <span id="sort-icon-ly_ytd"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[120px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">작년 같은 기간까지의<br>추정 누적 판매량</div>
+                                <div class="tooltip-text opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[120px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">작년 같은 기간까지의<br>추정 누적 판매량</div>
                             </th>
-                            <th class="sortable px-4 py-4 text-right bg-red-50/50 text-red-900 border-l group-tooltip relative" onclick="setSort('ytd')">
+                            <th class="sortable px-4 py-4 text-right bg-red-50/30 text-red-900 border-l group-tooltip relative" onclick="setSort('ytd')">
                                 올해 누계(YTD) <span id="sort-icon-ytd">▼</span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[140px] bg-slate-800 text-white text-[10px] rounded-md p-2 text-center shadow-xl font-normal z-50">선택한 월까지의 실제 누적 수량<br>괄호( )는 전년비 성장률</div>
+                                <div class="tooltip-text opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[140px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">선택한 월까지의 실제 누적 수량<br>괄호( )는 전년비 성장률</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('atot')">
                                 5년 평균 1년 <span id="sort-icon-atot"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[110px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">과거 5년 동안의<br>1년 전체 평균 판매량</div>
+                                <div class="tooltip-text opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[110px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">과거 5년 동안의<br>1년 전체 평균 판매량</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('aytd')">
                                 5년 평균 누적 <span id="sort-icon-aytd"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[130px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">과거 5년 동안의<br>선택월까지 누적 판매량</div>
+                                <div class="tooltip-text opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[130px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">과거 5년 동안의<br>선택월까지 누적 판매량</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right hover:bg-slate-100 cursor-pointer transition-colors group-tooltip relative" onclick="setSort('pt')">
                                 연간 달성률 <span id="sort-icon-pt"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[130px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">올해 누계 ÷ 5년 1년평균<br>(클릭시 정렬가능)</div>
+                                <div class="tooltip-text opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-[130px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">올해 누계 ÷ 5년 1년평균<br>(클릭시 정렬가능)</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right hover:bg-slate-100 cursor-pointer transition-colors group-tooltip relative" onclick="setSort('py')">
                                 동기간 도달률 <span id="sort-icon-py"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full right-0 transform -translate-x-4 mt-2 w-[130px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">올해 누계 ÷ 5년 누적평균<br>(클릭시 정렬가능)</div>
+                                <div class="tooltip-text opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute top-full right-0 transform -translate-x-4 mt-2 w-[130px] bg-slate-800 text-white text-[9px] rounded-md p-2 text-center shadow-xl font-normal z-50">올해 누계 ÷ 5년 누적평균<br>(클릭시 정렬가능)</div>
                             </th>
                         </tr>
                     </thead>
@@ -138,9 +157,12 @@
         const GITHUB_USER = "jeongkihyun25-arch";
         const REPO_NAME = "sales";
         
-        let rawWosData = [], histBaseData = [], currentType = 'ALL', selectedMonth = 1, maxAvailableMonth = 1;
+        let rawWosData = [], histBaseData = [], uniqueDealers = [];
+        let currentType = 'ALL', selectedMonth = 1, maxAvailableMonth = 1;
         let sortCol = 'ytd', sortDesc = true;
+        let wosGrandTotal = 0; 
 
+        // 💡 초성 추출 엔진
         const CHOSUNG = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
         function getChosung(str) {
             if (!str) return "";
@@ -169,23 +191,25 @@
                 processData(histRows, currRows);
                 
                 const now = new Date();
-                document.getElementById('update-time').innerText = `최종 동기화: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+                document.getElementById('update-time').innerText = `최근 동기화: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('main-content').classList.remove('hidden');
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                alert("데이터 로딩 실패. 새로고침 부탁드립니다.");
+            }
         }
 
         function processData(histRows, currRows) {
             if (!histRows || !currRows) return;
 
+            // 1. WOS 원본 헤더 찾기
             let cHeadIdx = 0;
             for(let i=0; i<Math.min(10, currRows.length); i++) {
                 const rowStr = currRows[i].map(v=>String(v||'')).join('');
                 if(rowStr.includes('거래처') && rowStr.includes('SIZE')) { cHeadIdx = i; break; }
             }
-
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
-            const cIdx = { dealer: cHeader.indexOf('거래처'), size: cHeader.indexOf('SIZE'), pttn: cHeader.indexOf('PTTN'), type: cHeader.indexOf('품목분류'), mtp: cHeader.indexOf('MTP분류') };
+            const cIdx = { dealer: cHeader.indexOf('거래처'), size: cHeader.indexOf('SIZE'), pttn: cHeader.indexOf('PTTN'), type: cHeader.indexOf('품목분류'), mtp: cHeader.indexOf('MTP분류'), total: cHeader.indexOf('합계수량') };
             
             const qtyCols = [];
             let mCount = 1;
@@ -196,11 +220,19 @@
             const cleanStr = str => String(str || '').replace(/[\s\/\(\)주]/g, '').toUpperCase();
 
             // WOS 데이터 병합
+            wosGrandTotal = 0;
             const wosMap = new Map();
             for (let i = cHeadIdx + 1; i < currRows.length; i++) {
                 const r = currRows[i];
-                if (!r || !String(r[cIdx.dealer]||'').trim() || r[cIdx.dealer].includes('합계')) continue;
+                if (!r) continue;
+                const dealerName = String(r[cIdx.dealer] || '').trim();
                 
+                if (dealerName.includes('합계') || dealerName.replace(/\s/g,'') === '[합계]') {
+                    if (cIdx.total !== -1 && r[cIdx.total]) wosGrandTotal = parseFloat(String(r[cIdx.total]).replace(/,/g, '')) || 0;
+                    continue; 
+                }
+                if(!dealerName) continue;
+
                 const key = cleanStr(r[cIdx.dealer]) + '|' + cleanStr(r[cIdx.size]) + '|' + cleanStr(r[cIdx.pttn]);
                 const monthQtys = {};
                 qtyCols.forEach(col => {
@@ -209,19 +241,15 @@
                 });
 
                 if (!wosMap.has(key)) {
-                    wosMap.set(key, { 
-                        d: String(r[cIdx.dealer]).replace(/\(주\)/g,'').trim(), 
-                        s: String(r[cIdx.size]||'-'), p: String(r[cIdx.pttn]||'-'),
-                        t: String(r[cIdx.type]||'기타'), m: String(r[cIdx.mtp]||'기타'), monthQtys 
-                    });
+                    wosMap.set(key, { d: dealerName.replace(/\(주\)/g,'').trim(), s: String(r[cIdx.size]||'-'), p: String(r[cIdx.pttn]||'-'), t: String(r[cIdx.type]||'기타'), m: String(r[cIdx.mtp]||'기타'), monthQtys });
                 } else {
-                    const existing = wosMap.get(key);
-                    qtyCols.forEach(col => existing.monthQtys[col.month] += monthQtys[col.month]);
+                    const target = wosMap.get(key);
+                    qtyCols.forEach(col => target.monthQtys[col.month] += monthQtys[col.month]);
                 }
             }
             rawWosData = Array.from(wosMap.values());
 
-            // 뼈대 파일 분석
+            // 2. 뼈대 파일 분석
             let hHeadIdx = 0;
             for(let i=0; i<Math.min(10, histRows.length); i++) {
                 const rowStr = histRows[i].map(v=>String(v||'')).join('');
@@ -236,10 +264,16 @@
                 return { key: cleanStr(r[idx.dealer])+'|'+cleanStr(r[idx.size])+'|'+cleanStr(r[idx.pttn]), d: String(r[idx.dealer]), t: String(r[idx.type]), m: String(r[idx.mtp]), s: String(r[idx.size]), p: String(r[idx.pttn]), ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0), atot: Math.max(0, parseFloat(r[idx.atot]) || 0), mAvg };
             });
 
+            // 💡 검색 목록용 고유 딜러 리스트
+            const dealerSet = new Set();
+            [...rawWosData, ...histBaseData].forEach(v => dealerSet.add(v.d));
+            uniqueDealers = Array.from(dealerSet).map(name => ({ name, cho: getChosung(name) }));
+
             let monthOptions = '';
             for(let i=1; i<=maxAvailableMonth; i++) monthOptions += `<option value="${i}" ${i===selectedMonth?'selected':''}>${i}월 마감 기준</option>`;
             document.getElementById('month-select').innerHTML = monthOptions;
             
+            setupSearch();
             render();
         }
 
@@ -256,10 +290,37 @@
         function changeMonth() { selectedMonth = parseInt(document.getElementById('month-select').value); render(); }
         function setSort(col) { if (sortCol === col) sortDesc = !sortDesc; else { sortCol = col; sortDesc = true; } render(); }
 
+        // 💡 1. 스마트 검색 (이름 우선순위 로직)
+        function setupSearch() {
+            const input = document.getElementById('search-input'), list = document.getElementById('autocomplete-list');
+            input.addEventListener('input', function() {
+                const val = this.value.trim().toLowerCase().replace(/\s+/g, ''), choVal = getChosung(val);
+                list.innerHTML = ''; if (!val) { list.classList.add('hidden'); render(); return; }
+                
+                const matches = uniqueDealers.filter(d => {
+                    const nMatch = d.name.toLowerCase().includes(val), cMatch = d.cho.includes(choVal);
+                    d._score = nMatch ? 2 : (cMatch ? 1 : 0); return d._score > 0;
+                }).sort((a,b) => b._score - a._score);
+
+                if (matches.length > 0) {
+                    matches.slice(0, 10).forEach(m => {
+                        const div = document.createElement('div');
+                        div.className = 'px-4 py-2.5 cursor-pointer hover:bg-slate-50 hover:text-red-600 text-xs font-bold';
+                        div.innerHTML = m.name;
+                        div.onclick = () => { input.value = m.name; list.classList.add('hidden'); render(); };
+                        list.appendChild(div);
+                    });
+                    list.classList.remove('hidden');
+                } else list.classList.add('hidden');
+                render();
+            });
+            document.onclick = (e) => { if (e.target !== input) list.classList.add('hidden'); };
+        }
+
         function render() {
             const selectedMtp = document.getElementById('mtp-select').value || 'ALL';
-            const search = document.getElementById('search-input').value.trim().toLowerCase().replace(/\s+/g, '');
-            const searchCho = getChosung(search);
+            const searchInput = document.getElementById('search-input').value.trim().toLowerCase().replace(/\s+/g, '');
+            const searchCho = getChosung(searchInput);
 
             ['ly_ytd', 'ytd', 'atot', 'aytd', 'pt', 'py'].forEach(c => {
                 const el = document.getElementById(`sort-icon-${c}`);
@@ -275,14 +336,13 @@
             const combined = [];
             const mappedKeys = new Set();
             histBaseData.forEach(h => {
-                let actual = 0;
-                if (currMap.has(h.key)) { actual = currMap.get(h.key).ytd; currMap.get(h.key).ytd = 0; }
+                let actual = 0; if (currMap.has(h.key)) { actual = currMap.get(h.key).ytd; currMap.get(h.key).ytd = 0; }
                 mappedKeys.add(h.key); combined.push({ ...h, ytd: actual });
             });
             for (const [key, val] of currMap.entries()) {
                 if (val.ytd !== 0) {
                     const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = 0;
-                    combined.push({ key, d: val.d, t: val.t, m: val.m, s: val.s, p: val.p, ytd: val.ytd, ly_total: 0, atot: 0, mAvg });
+                    combined.push({ key, d: val.d, t: val.t, m: val.m, s: val.size, p: val.p, ytd: val.ytd, ly_total: 0, atot: 0, mAvg });
                 }
             }
 
@@ -290,7 +350,7 @@
             if (currentType !== 'ALL') filtered = filtered.filter(d => d.t === currentType);
             if (selectedMtp !== 'ALL') filtered = filtered.filter(d => d.m === selectedMtp);
 
-            // MTP 필터 업데이트 (백지 현상 방지)
+            // 💡 MTP 필터 업데이트
             const currentMtpVal = document.getElementById('mtp-select').value;
             const mtps = [...new Set(combined.filter(d => currentType === 'ALL' || d.t === currentType).map(d => d.m))].sort();
             document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>' + mtps.map(m => `<option value="${m}" ${m===currentMtpVal?'selected':''}>${m}</option>`).join('');
@@ -302,13 +362,12 @@
                 let aySum = 0; for(let m=1; m<=selectedMonth; m++) aySum += r.mAvg[m];
                 dMap[r.d].ay += aySum;
                 dMap[r.d].ly_y += (r.ly_total * (aySum / (r.atot || 1)));
-
                 if(r.t === 'PSR') dMap[r.d].pcr[r.p] = (dMap[r.d].pcr[r.p] || 0) + r.ytd;
                 else dMap[r.d].tbr[`${r.s} | ${r.p}`] = (dMap[r.d].tbr[`${r.s} | ${r.p}`] || 0) + r.ytd;
             });
 
             const entries = Object.entries(dMap).filter(([n]) => {
-                return n.toLowerCase().replace(/\s+/g, '').includes(search) || getChosung(n).includes(searchCho);
+                return n.toLowerCase().replace(/\s+/g, '').includes(searchInput) || getChosung(n).includes(searchCho);
             }).sort((a,b) => {
                 const vA = a[1], vB = b[1];
                 if(sortCol==='pt') return sortDesc ? (vB.y/vB.at) - (vA.y/vA.at) : (vA.y/vA.at) - (vB.y/vB.at);
@@ -318,36 +377,37 @@
                 return sortDesc ? vB.y - vA.y : vA.y - vB.y;
             });
 
-            // 💡 이름 우선순위 검색 재정렬
-            if(search) {
+            // 💡 검색 우선순위 정렬 (이름 일치가 위로)
+            if(searchInput) {
                 entries.sort((a, b) => {
-                    const aMatch = a[0].toLowerCase().includes(search) ? 1 : 0;
-                    const bMatch = b[0].toLowerCase().includes(search) ? 1 : 0;
-                    return bMatch - aMatch;
+                    const aM = a[0].toLowerCase().includes(searchInput) ? 1 : 0;
+                    const bM = b[0].toLowerCase().includes(searchInput) ? 1 : 0;
+                    return bM - aM;
                 });
             }
 
             let T = { y:0, ly_y:0, ly_t:0, ay:0, at:0 };
             Object.values(dMap).forEach(v => { T.y += v.y; T.ly_y += v.ly_y; T.ly_t += v.ly_t; T.ay += v.ay; T.at += v.at; });
 
-            document.getElementById('ytd-val').innerText = Math.ceil(T.y).toLocaleString();
+            let displayYtd = (currentType==='ALL' && selectedMtp==='ALL' && searchInput==='' && wosGrandTotal>0) ? wosGrandTotal : T.y;
+            document.getElementById('ytd-val').innerText = Math.ceil(displayYtd).toLocaleString();
             document.getElementById('ly-ytd-val').innerText = Math.ceil(T.ly_y).toLocaleString();
-            const yoy = T.ly_y > 0 ? Math.ceil(((T.y / T.ly_y) - 1) * 100) : 0;
+            const yoy = T.ly_y > 0 ? Math.ceil(((displayYtd / T.ly_y) - 1) * 100) : 0;
             const badge = document.getElementById('ytd-yoy-badge');
-            badge.innerText = `전년동기 ${yoy}% ${yoy >= 0 ? '▲' : '▼'}`;
+            badge.innerText = `전년동기 ${yoy}% ${yoy>=0?'▲':'▼'}`;
             badge.className = `mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start ${yoy>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-600'}`;
-            document.getElementById('ytd-ly-total-text').innerText = `작년 연간 전체 대비 ${Math.ceil(T.ly_t?T.y/T.ly_t*100:0)}% 달성`;
-            document.getElementById('attainment-ytd-pct').innerText = (T.ay?Math.ceil(T.y/T.ay*100):0)+'%';
-            document.getElementById('attainment-ytd-bar').style.width = Math.min(100,(T.ay?T.y/T.ay*100:0))+'%';
-            document.getElementById('target-ytd-detail').innerText = `올해(${Math.ceil(T.y).toLocaleString()}) / 5년 동기평균(${Math.ceil(T.ay).toLocaleString()})`;
-            document.getElementById('attainment-total-pct').innerText = (T.at?Math.ceil(T.y/T.at*100):0)+'%';
-            document.getElementById('attainment-total-bar').style.width = Math.min(100,(T.at?T.y/T.at*100:0))+'%';
-            document.getElementById('target-total-detail').innerText = `올해(${Math.ceil(T.y).toLocaleString()}) / 5년 연간평균(${Math.ceil(T.at).toLocaleString()})`;
+            document.getElementById('ytd-ly-total-text').innerText = `작년 1년 전체 대비 ${Math.ceil(T.ly_t?displayYtd/T.ly_t*100:0)}% 달성`;
+            document.getElementById('attainment-ytd-pct').innerText = (T.ay?Math.ceil(displayYtd/T.ay*100):0)+'%';
+            document.getElementById('attainment-ytd-bar').style.width = Math.min(100,(T.ay?displayYtd/T.ay*100:0))+'%';
+            document.getElementById('target-ytd-detail').innerText = `올해 누계(${Math.ceil(displayYtd).toLocaleString()}) / 5년 동기평균(${Math.ceil(T.ay).toLocaleString()})`;
+            document.getElementById('attainment-total-pct').innerText = (T.at?Math.ceil(displayYtd/T.at*100):0)+'%';
+            document.getElementById('attainment-total-bar').style.width = Math.min(100,(T.at?displayYtd/T.at*100:0))+'%';
+            document.getElementById('target-total-detail').innerText = `올해 누계(${Math.ceil(displayYtd).toLocaleString()}) / 5년 연간평균(${Math.ceil(T.at).toLocaleString()})`;
 
             document.getElementById('row-count').innerText = `${entries.length} Dealers`;
             document.getElementById('dealer-list').innerHTML = entries.map(([n, d], idx) => {
                 const pt = d.at ? Math.ceil(d.y/d.at*100) : 0, py = d.ay ? Math.ceil(d.y/d.ay*100) : 0;
-                const pcrKeys = Object.keys(d.pcr).sort((a,b)=>d.pcr[b]-d.pcr[a]), tbrKeys = Object.keys(d.tbr).sort((a,b)=>d.tbr[b]-d.tbr[a]);
+                const pKeys = Object.keys(d.pcr).sort((a,b)=>d.pcr[b]-d.pcr[a]), tKeys = Object.keys(d.tbr).sort((a,b)=>d.tbr[b]-d.tbr[a]);
                 return `
                 <tr class="dealer-row hover:bg-slate-50 transition-colors cursor-pointer group" onclick="const el=document.getElementById('det-${idx}'); el.classList.toggle('hidden')">
                     <td class="px-6 py-4 sticky-col font-bold shadow-sm">
@@ -361,9 +421,9 @@
                     <td class="px-4 py-4 text-right"><div class="flex flex-col items-end"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black">${py}%</span><span class="text-[9px] text-slate-400">(${Math.ceil(d.y)}/${Math.ceil(d.ay)})</span></div></td>
                 </tr>
                 <tr id="det-${idx}" class="hidden bg-slate-50"><td colspan="7" class="p-3">
-                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-inner">
-                        ${pcrKeys.length ? `<div class="mb-2"><p class="text-[10px] font-black text-slate-400 mb-1 uppercase">PCR Patterns</p><table class="w-full text-[10px]"><tbody>${pcrKeys.map(k=>`<tr><td>${k}</td><td class="text-right bstk-red font-bold">${Math.ceil(d.pcr[k]).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>`:''}
-                        ${tbrKeys.length ? `<div><p class="text-[10px] font-black text-slate-400 mb-1 uppercase">TBR Sizes & Patterns</p><table class="w-full text-[10px]"><tbody>${tbrKeys.map(k=>`<tr><td>${k}</td><td class="text-right bstk-red font-bold">${Math.ceil(d.tbr[k]).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>`:''}
+                    <div class="bg-white p-3 rounded-xl border border-slate-200">
+                        ${pKeys.length ? `<div class="mb-2"><p class="text-[10px] font-black text-slate-400 mb-1">PCR Patterns</p><table class="w-full text-[10px]"><tbody>${pKeys.map(k=>`<tr><td>${k}</td><td class="text-right bstk-red font-bold">${Math.ceil(d.pcr[k]).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>`:''}
+                        ${tKeys.length ? `<div><p class="text-[10px] font-black text-slate-400 mb-1">TBR Sizes/Patterns</p><table class="w-full text-[10px]"><tbody>${tKeys.map(k=>`<tr><td>${k}</td><td class="text-right bstk-red font-bold">${Math.ceil(d.tbr[k]).toLocaleString()}</td></tr>`).join('')}</tbody></table></div>`:''}
                     </div>
                 </td></tr>`;
             }).join('');
