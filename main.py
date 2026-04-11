@@ -5,12 +5,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
+# 1. 환경 변수 및 경로 설정
 USER_ID = os.environ.get('WOS_ID')
 USER_PW = os.environ.get('WOS_PW')
 current_dir = os.path.abspath(os.getcwd())
 temp_dir = os.path.join(current_dir, 'temp_downloads')
 os.makedirs(temp_dir, exist_ok=True)
 
+# 2. 브라우저 세팅
 options = webdriver.ChromeOptions()
 options.add_argument('--headless=new')
 options.add_argument('--no-sandbox')
@@ -21,6 +23,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 driver.execute_cdp_cmd('Page.setDownloadBehavior', {'behavior': 'allow', 'downloadPath': temp_dir})
 
 try:
+    # 3. WOS 접속 및 실적 다운로드
     print("🚀 WOS 세일즈 실적 수집 시작...")
     driver.get('http://wos.bridgestone-korea.co.kr/')
     time.sleep(5)
@@ -39,6 +42,7 @@ try:
     driver.find_element(By.CLASS_NAME, 'excel_btn').click()
     time.sleep(30)
 
+    # 4. 파일 읽기 및 데이터 합성
     files = [f for f in os.listdir(temp_dir) if not f.endswith('.crdownload')]
     if files:
         source_path = os.path.join(temp_dir, files[0])
@@ -47,7 +51,7 @@ try:
 
         print(f"📊 다운로드 완료. 데이터 합성 시작...")
 
-        # 💡 [핵심 수정] 에러 안 나게 읽는 방법 2중 방어망 구축
+        # 💡 [핵심] 에러 원천 차단: 2중 방어망 구축
         try:
             print("... 1단계: 진짜 엑셀(xlrd) 방식으로 읽기 시도")
             new_df = pd.read_excel(source_path, engine='xlrd')
@@ -61,7 +65,7 @@ try:
         # 기준표(Historical) 읽기
         ref_df = pd.read_excel(ref_path)
 
-        # 실적 합산 및 공백 제거 (3중 매칭)
+        # 5. 실적 합산 및 공백 제거 (3중 매칭 준비)
         new_agg = new_df.groupby(['거래처', 'SIZE', 'PTTN'])['합계수량'].sum().reset_index()
         new_agg.columns = ['거래처명', '사이즈', '패턴명', '실적']
         
@@ -69,11 +73,11 @@ try:
             for col in cols:
                 df[col] = df[col].astype(str).str.strip()
 
-        # 데이터 끼워넣기
+        # 6. 데이터 끼워넣기 (Left Join)
         merged = pd.merge(ref_df, new_agg, on=['거래처명', '사이즈', '패턴명'], how='left')
         ref_df['2026년(당해)'] = merged['실적'].fillna(0)
         
-        # 최종 완성본 저장
+        # 7. 최종 완성본 저장
         ref_df.to_excel(target_path, index=False)
         print("🎉 합성 완료! 완벽한 current_sales.xlsx가 생성되었습니다.")
 
