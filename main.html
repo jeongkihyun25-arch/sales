@@ -171,6 +171,29 @@
     </main>
 
     <script>
+// --- [1. 보안 코드 추가] ---
+    const userName = localStorage.getItem("bstk_user");
+    if(!userName) { 
+        location.replace("index.html"); 
+    }
+
+    async function keepAlive() {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const deviceType = isMobile ? "MOBILE" : "PC/Laptop";
+        
+        fetch("https://script.google.com/macros/s/AKfycbz8_7vwDnAJdj2jP-a-uR6hcMj_v2uMZL_TKUJfglUA2nAGN5caPNv-g3onePSbBzFx/exec", {
+            method: "POST",
+            mode: "no-cors", 
+            body: JSON.stringify({ 
+                name: userName, 
+                deviceId: "STAY", 
+                deviceModel: deviceType 
+            })
+        });
+    }
+    setInterval(keepAlive, 50000); 
+    keepAlive(); 
+    // --- [보안 코드 끝] ---
         const GITHUB_USER = "jeongkihyun25-arch";
         const REPO_NAME = "sales";
         
