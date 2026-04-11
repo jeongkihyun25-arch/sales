@@ -239,45 +239,35 @@
             }
         }
 
-        // 💡 [핵심 수정 부분] '정확한 매칭'을 1순위로 하여 사원명 오작동 원천 차단
-        const findCol = (arr, keywords, excludeWords = []) => {
-            // 1순위: 지정한 키워드와 완벽하게 일치하는 열을 먼저 찾습니다. (예: '거래처명'을 최우선으로)
-            for (let k of keywords) {
-                const exactIdx = arr.findIndex(v => String(v).replace(/\s/g, '').toUpperCase() === k);
-                if (exactIdx !== -1) return exactIdx;
+        // 💡 [수정] 헤더 행을 좀 더 깊고 정확하게 찾는 함수 추가
+        function findHeaderRowIndex(rows, requiredKeywords) {
+            for (let i = 0; i < Math.min(20, rows.length); i++) {
+                if (!rows[i]) continue;
+                const rowStr = rows[i].map(v => String(v || '').toUpperCase().replace(/\s/g, '')).join('|');
+                
+                // 필수 키워드들이 모두 포함되어 있는지 확인
+                const isMatch = requiredKeywords.every(k => rowStr.includes(k.toUpperCase().replace(/\s/g, '')));
+                if (isMatch) return i;
             }
-            
-            // 2순위: 완벽 일치가 없으면 단어가 포함된 열을 찾되, 사람 이름/담당자 관련 단어는 절대 포함 안 되게 거릅니다.
-            return arr.findIndex(v => {
-                const str = String(v).toUpperCase().replace(/\s/g, '');
-                const hasKeyword = keywords.some(k => str.includes(k));
-                const hasExclude = excludeWords.length > 0 && excludeWords.some(e => str.includes(e));
-                return hasKeyword && !hasExclude;
-            });
-        };
+            return 0; // 못 찾으면 첫 번째 줄을 반환
+        }
 
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
-            let cHeadIdx = 0;
-            for(let i=0; i<Math.min(10, currRows.length); i++) {
-                const rowStr = currRows[i].map(v=>String(v||'')).join('');
-                if(rowStr.includes('거래처') && rowStr.includes('SIZE')) {
-                    cHeadIdx = i; break;
-                }
-            }
-
-            const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
+            // 💡 [핵심수정] current_sales.xlsx 에서 정확히 '거래처'와 'SIZE'가 있는 행 찾기
+            const cHeadIdx = findHeaderRowIndex(currRows, ['거래처', 'SIZE']);
+            const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim().replace(/\s/g, '')); // 공백 제거하여 매칭 확률 높임
             
-            // 💡 여기서 '거래처명'을 1순위로 찾고, '담당, 사원, 이름, 대표' 등이 포함된 열은 철저히 무시합니다.
+            // 💡 [핵심수정] 명시적으로 엑셀의 열 이름을 찾아 인덱스를 매핑합니다.
             const cIdx = { 
-                dealer: findCol(cHeader, ['거래처명', '딜러명', '고객명', '거래처'], ['담당', '사원', '이름', '대표', '코드', 'CODE', '영업', '그룹']),
-                size: findCol(cHeader, ['SIZE', '사이즈']),
-                pttn: findCol(cHeader, ['PTTN', '패턴']),
-                type: findCol(cHeader, ['품목분류', 'TYPE']),
-                mtp: findCol(cHeader, ['MTP']),
-                total: findCol(cHeader, ['합계수량']),
-                dept: findCol(cHeader, ['이익부서', '부서'])
+                dealer: cHeader.findIndex(h => h.includes('거래처명') || h === '거래처'), // 담당자 열 방지
+                size: cHeader.findIndex(h => h.includes('SIZE') || h.includes('사이즈')),
+                pttn: cHeader.findIndex(h => h.includes('PTTN') || h.includes('패턴')),
+                type: cHeader.findIndex(h => h.includes('품목분류') || h === 'TYPE'),
+                mtp: cHeader.findIndex(h => h.includes('MTP')),
+                total: cHeader.findIndex(h => h.includes('합계수량')),
+                dept: cHeader.findIndex(h => h.includes('이익부서') || h.includes('부서'))
             };
             
             const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
@@ -294,6 +284,8 @@
                 
                 if (cIdx.dept !== -1 && String(r[cIdx.dept] || '').includes('경영계획')) continue;
 
+                // 💡 [보안] 만약 dealer 열을 못 찾았으면 에러 방지를 위해 스킵
+                if(cIdx.dealer === -1) continue; 
                 const dealerName = String(r[cIdx.dealer] || '').trim();
                 
                 if (dealerName.includes('합계') || dealerName.includes('총계') || dealerName.replace(/\s/g, '') === '[합계]') {
@@ -326,32 +318,29 @@
                 currMap[key].qty += totalQty;
             }
 
-            let hHeadIdx = 0;
-            for(let i=0; i<Math.min(10, histRows.length); i++) {
-                const rowStr = histRows[i].map(v=>String(v||'')).join('');
-                if(rowStr.includes('거래처명') && rowStr.includes('사이즈')) {
-                    hHeadIdx = i; break;
-                }
-            }
+            // 💡 [핵심수정] historical_data.xlsx 에서 정확히 '거래처명'과 '사이즈'가 있는 행 찾기
+            const hHeadIdx = findHeaderRowIndex(histRows, ['거래처', '사이즈']);
+            const hHeader = histRows[hHeadIdx].map(v => String(v || '').trim().replace(/\s/g, ''));
 
-            const h = histRows[hHeadIdx].map(v => String(v || '').trim());
-            // 💡 과거 데이터(Historical)에서도 똑같이 엄격한 기준으로 찾습니다.
             const idx = {
-                dealer: findCol(h, ['거래처명', '딜러명', '고객명', '거래처'], ['담당', '사원', '이름', '대표', '코드', 'CODE', '영업', '그룹']),
-                type: findCol(h, ['품목분류', 'TYPE']),
-                mtp: findCol(h, ['MTP']),
-                size: findCol(h, ['SIZE', '사이즈']),
-                pttn: findCol(h, ['PTTN', '패턴']),
-                y25: findCol(h, ['2025년']),
-                atot: findCol(h, ['5년평균(연간)'])
+                dealer: hHeader.findIndex(h => h.includes('거래처명') || h === '거래처'),
+                type: hHeader.findIndex(h => h.includes('품목분류') || h === 'TYPE'),
+                mtp: hHeader.findIndex(h => h.includes('MTP')),
+                size: hHeader.findIndex(h => h.includes('SIZE') || h.includes('사이즈')),
+                pttn: hHeader.findIndex(h => h.includes('PTTN') || h.includes('패턴')),
+                y25: hHeader.findIndex(h => h.includes('2025년')),
+                atot: hHeader.findIndex(h => h.includes('5년평균(연간)'))
             };
-            const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.findIndex(v => String(v).replace(/\s/g, '') === `${m}월(5년평균)`);
+            const mIdx = {}; 
+            for(let m=1; m<=12; m++) {
+                mIdx[m] = hHeader.findIndex(v => v.includes(`${m}월(5년평균)`));
+            }
 
             const mappedKeys = new Set();
             fullData = [];
 
             histRows.slice(hHeadIdx + 1).forEach(r => {
-                if (!r || !r[idx.dealer]) return;
+                if (!r || idx.dealer === -1 || !r[idx.dealer]) return;
                 const histKey = cleanStr(r[idx.dealer]) + cleanStr(r[idx.size]) + cleanStr(r[idx.pttn]);
                 mappedKeys.add(histKey);
                 
@@ -361,10 +350,13 @@
                     currMap[histKey].qty = 0; 
                 }
 
-                const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
+                const mAvg = {}; 
+                for(let m=1; m<=12; m++) {
+                    mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
+                }
                 
                 fullData.push({
-                    dealer: String(r[idx.dealer]), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
+                    dealer: String(r[idx.dealer]).replace(/\(주\)/g,'').trim(), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
                     size: String(r[idx.size]||'-'), pttn: String(r[idx.pttn]||'-'),
                     ytd: actualYtd, 
                     ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
