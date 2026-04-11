@@ -135,37 +135,81 @@
 
         async function init() {
             const t = new Date().getTime();
-            const url = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/historical_data.xlsx?t=${t}`;
+            // 💡 [핵심] 뼈대파일(Historical)과 원본실적파일(Current)을 동시에 가져옵니다.
+            const histUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/historical_data.xlsx?t=${t}`;
+            const currUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/current_sales.xlsx?t=${t}`;
+            
             try {
-                const res = await fetch(url);
-                const ab = await res.arrayBuffer();
-                const wb = XLSX.read(new Uint8Array(ab), {type: 'array'});
-                processData(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1}));
+                const [histRes, currRes] = await Promise.all([fetch(histUrl), fetch(currUrl)]);
                 
-                // 💡 업데이트 시각 표시
+                const histWb = XLSX.read(new Uint8Array(await histRes.arrayBuffer()), {type: 'array'});
+                const currWb = XLSX.read(new Uint8Array(await currRes.arrayBuffer()), {type: 'array'});
+                
+                const histRows = XLSX.utils.sheet_to_json(histWb.Sheets[histWb.SheetNames[0]], {header: 1});
+                const currRows = XLSX.utils.sheet_to_json(currWb.Sheets[currWb.SheetNames[0]], {header: 1});
+                
+                processData(histRows, currRows);
+                
                 const now = new Date();
                 document.getElementById('update-time').innerText = `최근 동기화: ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
                 
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('main-content').classList.remove('hidden');
             } catch (e) {
-                alert("historical_data.xlsx 파일을 찾을 수 없습니다.");
+                alert("데이터를 불러오는 중 문제가 발생했습니다. Actions 로봇이 성공했는지 확인해주세요.");
+                console.error(e);
             }
         }
 
-        function processData(rows) {
-            const h = rows[0].map(v => String(v || '').trim());
+        function processData(histRows, currRows) {
+            if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
+
+            // --- 💡 1. WOS 원본 실적(Current)에서 QTY 싹쓸이 합산 ---
+            const cHeader = currRows[0].map(v => String(v || '').trim());
+            const cIdx = { dealer: cHeader.indexOf('거래처'), size: cHeader.indexOf('SIZE'), pttn: cHeader.indexOf('PTTN') };
+            
+            // 컬럼 이름에 'QTY'가 포함된 모든 위치 찾기 (월별 파편화된 데이터 모으기)
+            const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
+
+            const currMap = {};
+            // 띄어쓰기, 괄호, 슬래시, '주' 글자 제거하고 대문자로 통일 (초강력 맵핑)
+            const cleanStr = str => String(str || '').replace(/[\s\/\(\)주]/g, '').toUpperCase();
+
+            for (let i = 1; i < currRows.length; i++) {
+                const r = currRows[i];
+                if (!r[cIdx.dealer]) continue;
+                
+                const key = cleanStr(r[cIdx.dealer]) + cleanStr(r[cIdx.size]) + cleanStr(r[cIdx.pttn]);
+                let totalQty = 0;
+                
+                // 가로로 월별 QTY들을 모두 더함
+                qtyIndices.forEach(idx => { totalQty += parseFloat(r[idx]) || 0; });
+                
+                currMap[key] = (currMap[key] || 0) + totalQty;
+            }
+
+            // --- 💡 2. Historical 뼈대에 실적 끼워넣기 ---
+            const h = histRows[0].map(v => String(v || '').trim());
             const idx = {
                 dealer: h.indexOf('거래처명'), type: h.indexOf('품목분류'), mtp: h.indexOf('MTP분류'),
-                y25: h.indexOf('2025년'), y26: h.indexOf('2026년(당해)'), atot: h.indexOf('5년평균(연간)')
+                size: h.indexOf('사이즈'), pttn: h.indexOf('패턴명'),
+                y25: h.indexOf('2025년'), atot: h.indexOf('5년평균(연간)')
             };
             const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.indexOf(`${m}월(5년평균)`);
 
-            fullData = rows.slice(1).filter(r => r[idx.dealer]).map(r => {
+            fullData = histRows.slice(1).filter(r => r[idx.dealer]).map(r => {
+                // 뼈대 파일도 동일하게 매핑 키 생성
+                const histKey = cleanStr(r[idx.dealer]) + cleanStr(r[idx.size]) + cleanStr(r[idx.pttn]);
+                
+                // 위에서 계산한 진짜 올해 실적(YTD)을 꽂아넣음
+                const actualYtd = currMap[histKey] || 0; 
+
                 const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
+                
                 return {
                     dealer: String(r[idx.dealer]), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
-                    ytd: Math.max(0, parseFloat(r[idx.y26]) || 0), ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
+                    ytd: actualYtd, 
+                    ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
                     atot: Math.max(0, parseFloat(r[idx.atot]) || 0), mAvg: mAvg
                 };
             });
@@ -193,7 +237,6 @@
             const selectedMtp = document.getElementById('mtp-select').value;
             const search = document.getElementById('search-input').value.toLowerCase();
 
-            // 정렬 아이콘 업데이트
             ['ly_ytd', 'ytd', 'atot', 'aytd'].forEach(c => {
                 const el = document.getElementById(`sort-icon-${c}`);
                 if(el) el.innerText = sortCol === c ? (sortDesc ? '▼' : '▲') : '';
@@ -237,7 +280,6 @@
             document.getElementById('attainment-total-bar').style.width = Math.min(100, (T.atot > 0 ? (T.ytd/T.atot)*100 : 0)) + "%";
             document.getElementById('target-total-val').innerText = Math.ceil(T.atot).toLocaleString();
 
-            // 검색 필터링 및 정렬
             const entries = Object.entries(dMap)
                 .filter(([n]) => n.toLowerCase().includes(search))
                 .sort((a,b) => sortDesc ? b[1][sortCol] - a[1][sortCol] : a[1][sortCol] - b[1][sortCol]);
