@@ -2,6 +2,7 @@ selenium
 webdriver-manager
 pandas
 openpyxl
+xlrd
 beautifulsoup4
 html5lib
 lxml
