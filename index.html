@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BSTK 세일즈 보안 인증</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em; }
+    </style>
+</head>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-6">
+    <div class="bg-white p-10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] w-full max-w-sm text-center border border-slate-100">
+        <div class="bg-gradient-to-br from-[#E30613] to-[#B0000A] text-white font-black px-4 py-2 rounded-xl inline-block mb-8 italic shadow-lg shadow-red-200">BSTK</div>
+        
+        <h1 class="text-2xl font-black text-slate-800 mb-3">보안 접속</h1>
+        <p class="text-slate-400 text-sm mb-10 font-bold leading-relaxed">등록된 성함을 입력하시면<br>기기 인증 후 입장이 가능합니다.</p>
+        
+        <div class="relative mb-6">
+            <input id="userName" type="text" placeholder="성함 입력" 
+                class="w-full border-2 border-slate-50 bg-slate-50 rounded-2xl px-4 py-5 text-center font-black text-lg focus:bg-white focus:border-red-500 focus:ring-4 focus:ring-red-500/10 outline-none transition-all placeholder:text-slate-300">
+        </div>
+        
+        <button onclick="checkAuth()" id="loginBtn"
+            class="w-full bg-slate-900 text-white font-black py-5 rounded-2xl hover:bg-black active:scale-[0.98] transition-all shadow-xl shadow-slate-200 text-lg">
+            인증 및 접속
+        </button>
+        
+        <div id="loading" class="hidden mt-6 flex justify-center">
+            <div class="w-5 h-5 border-3 border-slate-200 border-t-red-500 rounded-full animate-spin"></div>
+        </div>
+        
+        <p id="msg" class="mt-6 text-[11px] font-black text-red-500 min-h-[1rem]"></p>
+        
+        <p class="mt-10 text-[10px] text-slate-300 font-bold uppercase tracking-widest">Bridgestone Sales Security System</p>
+    </div>
+
+    <script>
+        // 💡 기현님이 주신 구글 보안 서버 주소
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwY5psid2NFhn7cwmA-YXH7GlRc1OhmL4IrFj4pnwtwo_ffiDWH218OzIUu-ArpIA1Z/exec";
+
+        // 기기 식별 고유값 생성
+        const deviceId = navigator.userAgent.replace(/\D/g, "") + screen.width + screen.height;
+        const deviceModel = (navigator.userAgent.includes("iPhone") ? "iPhone" : (navigator.userAgent.includes("Android") ? "Android" : "PC/Laptop"));
+
+        window.onload = function() {
+            const savedName = localStorage.getItem("bstk_user");
+            if(savedName) {
+                document.getElementById("userName").value = savedName;
+            }
+        }
+
+        async function checkAuth() {
+            const name = document.getElementById("userName").value.trim();
+            const btn = document.getElementById("loginBtn");
+            const msg = document.getElementById("msg");
+            const loader = document.getElementById("loading");
+
+            if(!name) { alert("성함을 입력해 주세요."); return; }
+
+            btn.classList.add('hidden');
+            loader.classList.remove('hidden');
+            msg.innerText = "보안 서버에서 기기를 검증하고 있습니다...";
+
+            try {
+                // 구글 시트로 데이터 전송
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ name, deviceId, deviceModel })
+                });
+                const result = await response.text();
+
+                if(result === "SUCCESS" || result === "SUCCESS_INIT") {
+                    localStorage.setItem("bstk_user", name);
+                    msg.className = "mt-6 text-[11px] font-black text-emerald-500";
+                    msg.innerText = "✅ 인증 성공! 화면으로 이동합니다.";
+                    
+                    // 인증 성공 시 실제 데이터 파일(main.html)로 이동
+                    setTimeout(() => { location.replace("main.html"); }, 800);
+                } else if(result === "FAIL_DEVICE") {
+                    msg.innerText = "❌ 등록되지 않은 기기입니다. 본인 폰이 맞는지 확인해 주세요.";
+                } else {
+                    msg.innerText = "❌ 인증에 실패했습니다. 이름을 확인해 주세요.";
+                }
+            } catch (e) {
+                msg.innerText = "⚠️ 서버 응답 지연 (잠시 후 다시 시도해 주세요)";
+            } finally {
+                btn.classList.remove('hidden');
+                loader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
