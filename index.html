@@ -3,46 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BSTK 보안 인증</title>
+    <title>BSTK 보안 인증 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 flex items-center justify-center min-h-screen p-6 text-slate-800">
+
     <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-sm text-center">
-        <div class="bg-red-600 text-white font-black px-4 py-2 rounded-lg inline-block mb-8 italic">BSTK</div>
-        <h1 class="text-2xl font-black mb-2">보안 접속</h1>
-        <p class="text-slate-400 text-xs mb-10 font-bold">등록된 성함을 입력해 주세요.</p>
-        <input id="userName" type="text" placeholder="성함 입력" class="w-full border-2 border-slate-100 rounded-2xl px-4 py-5 mb-6 text-center font-bold text-lg focus:border-red-500 outline-none transition-all">
-        <button onclick="checkAuth()" id="loginBtn" class="w-full bg-slate-800 text-white font-black py-5 rounded-2xl hover:bg-black transition-all shadow-lg text-lg">인증 및 접속</button>
-        <p id="msg" class="mt-6 text-[11px] font-bold text-red-500 min-h-[1rem]"></p>
+        <div class="bg-red-600 text-white font-black px-4 py-2 rounded-lg inline-block mb-8 italic shadow-md">BSTK</div>
+        <h1 class="text-2xl font-black mb-2 tracking-tight">보안 서버 접속</h1>
+        <p class="text-slate-400 text-[11px] mb-10 font-bold uppercase tracking-widest italic">Personalized Security</p>
+        
+        <input id="userName" type="text" placeholder="성함 입력" 
+            class="w-full border-2 border-slate-100 rounded-2xl px-4 py-5 text-center font-black text-xl focus:border-red-500 outline-none transition-all placeholder:text-slate-200">
+        
+        <button onclick="checkAuth()" id="loginBtn" 
+            class="w-full bg-slate-800 text-white font-black py-5 rounded-2xl hover:bg-black transition-all shadow-lg text-lg mt-6 mb-4">
+            인증 및 접속
+        </button>
+        
+        <p id="msg" class="text-[12px] font-bold text-red-500 min-h-[1.5rem]"></p>
     </div>
+
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8_7vwDnAJdj2jP-a-uR6hcMj_v2uMZL_TKUJfglUA2nAGN5caPNv-g3onePSbBzFx/exec";
+
+        // [핵심] 페이지가 열리자마자 저장된 이름이 있는지 확인
+        window.onload = function() {
+            const savedName = localStorage.getItem("bstk_user");
+            if (savedName) {
+                document.getElementById("userName").value = savedName;
+                // 이름이 있으면 자동으로 버튼 클릭 (자동 로그인)
+                checkAuth();
+            }
+        };
+
         async function checkAuth() {
             const name = document.getElementById("userName").value.trim();
             const btn = document.getElementById("loginBtn");
             const msg = document.getElementById("msg");
-            if(!name) { alert("성함을 입력하세요."); return; }
-            btn.disabled = true; btn.innerText = "기기 검증 중..."; msg.innerText = "";
+
+            if(!name) return;
+
+            btn.disabled = true;
+            btn.innerText = "자동 보안 인증 중...";
+
             const deviceId = navigator.userAgent.replace(/\D/g, "") + screen.width + screen.height;
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             const deviceModel = isMobile ? "MOBILE" : "PC/Laptop";
+
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: "POST",
                     body: JSON.stringify({ name, deviceId, deviceModel })
                 });
+                
                 const result = await response.text();
+
                 if(result === "SUCCESS") {
+                    // 기기에 이름 저장 (PC/모바일 둘 다 저장됨)
                     localStorage.setItem("bstk_user", name);
                     location.replace("main.html");
-                } else if(result === "DUPLICATE_LOGIN") {
-                    msg.innerText = "❌ 이미 다른 기기에서 접속 중입니다.";
-                } else if(result === "FAIL_DEVICE") {
-                    msg.innerText = "❌ 등록된 기기가 아닙니다. (기기 변경 시 관리자 문의)";
-                } else if(result === "NO_USER") {
-                    msg.innerText = "❌ 권한이 없습니다.";
+                } else {
+                    // 실패 시 저장된 이름 삭제 (기기 변경 등의 경우 대비)
+                    localStorage.removeItem("bstk_user");
+                    msg.innerText = "❌ 인증 실패: " + (result === "FAIL_DEVICE" ? "등록된 기기 아님" : "권한 없음");
                 }
-            } catch (e) { msg.innerText = "⚠️ 서버 연결 오류"; } finally { btn.disabled = false; btn.innerText = "인증 및 접속"; }
+            } catch (e) {
+                msg.innerText = "⚠️ 서버 연결 실패";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "인증 및 접속";
+            }
         }
     </script>
 </body>
