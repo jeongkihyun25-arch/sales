@@ -239,8 +239,15 @@
             }
         }
 
-        // 💡 [버그수정] 엑셀 열 자동 탐지 엔진 (사람이름 차단 기능 탑재)
-        const findCol = (arr, keywords) => arr.findIndex(v => keywords.some(k => String(v).toUpperCase().replace(/\s/g,'').includes(k)));
+        // 💡 [단어 매칭 엄격화] '거래처'가 포함된 열 중에서 '담당'이라는 글자가 있으면 무시하도록 수정
+        const findCol = (arr, keywords, excludeWords = []) => {
+            return arr.findIndex(v => {
+                const str = String(v).toUpperCase().replace(/\s/g, '');
+                const hasKeyword = keywords.some(k => str.includes(k));
+                const hasExclude = excludeWords.length > 0 && excludeWords.some(e => str.includes(e));
+                return hasKeyword && !hasExclude;
+            });
+        };
 
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
@@ -255,9 +262,9 @@
 
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
             
-            // 💡 [해결2] 정확한 컬럼 매핑으로 딜러명 오류(사람 이름 뜨는 현상) 완벽 차단
+            // 💡 [해결] 거래처, 딜러명은 찾되, '담당'이나 '이름'이 들어간 열은 딜러명 열에서 제외
             const cIdx = { 
-                dealer: findCol(cHeader, ['거래처', '딜러']),
+                dealer: findCol(cHeader, ['거래처명', '딜러명', '거래처'], ['담당', '이름']),
                 size: findCol(cHeader, ['SIZE', '사이즈']),
                 pttn: findCol(cHeader, ['PTTN', '패턴']),
                 type: findCol(cHeader, ['품목분류', 'TYPE']),
@@ -278,7 +285,6 @@
                 const r = currRows[i];
                 if(!r) continue;
                 
-                // 💡 [해결3] '경영계획' 완벽 필터링 (사용자님 요청)
                 if (cIdx.dept !== -1 && String(r[cIdx.dept] || '').includes('경영계획')) continue;
 
                 const dealerName = String(r[cIdx.dealer] || '').trim();
@@ -323,7 +329,7 @@
 
             const h = histRows[hHeadIdx].map(v => String(v || '').trim());
             const idx = {
-                dealer: findCol(h, ['거래처', '딜러']),
+                dealer: findCol(h, ['거래처', '딜러'], ['담당', '이름']),
                 type: findCol(h, ['품목분류', 'TYPE']),
                 mtp: findCol(h, ['MTP']),
                 size: findCol(h, ['SIZE', '사이즈']),
@@ -493,7 +499,6 @@
                 }
             });
 
-            // 💡 [해결4] 동기간 도달률/연간 달성률 정렬 오류 해결 (NaN 방지)
             let entries = Object.entries(dMap).filter(([n]) => {
                 return n.toLowerCase().replace(/\s+/g, '').includes(search) || getChosung(n).includes(searchCho);
             }).sort((a,b) => {
@@ -561,7 +566,6 @@
                 
                 const pcrKeys = Object.keys(d.pcrDetails).filter(k => d.pcrDetails[k] !== 0).sort((a,b) => d.pcrDetails[b] - d.pcrDetails[a]);
                 
-                // 💡 [해결5] TBR 정렬: 1순위 사이즈, 2순위 수량순
                 const tbrKeys = Object.keys(d.tbrDetails).filter(k => d.tbrDetails[k] !== 0).sort((a,b) => {
                     const sizeA = a.split('|')[0].trim();
                     const sizeB = b.split('|')[0].trim();
