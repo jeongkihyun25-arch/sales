@@ -239,8 +239,15 @@
             }
         }
 
-        // 💡 [단어 매칭 엄격화] '거래처'가 포함된 열 중에서 '담당'이라는 글자가 있으면 무시하도록 수정
+        // 💡 [핵심 수정 부분] '정확한 매칭'을 1순위로 하여 사원명 오작동 원천 차단
         const findCol = (arr, keywords, excludeWords = []) => {
+            // 1순위: 지정한 키워드와 완벽하게 일치하는 열을 먼저 찾습니다. (예: '거래처명'을 최우선으로)
+            for (let k of keywords) {
+                const exactIdx = arr.findIndex(v => String(v).replace(/\s/g, '').toUpperCase() === k);
+                if (exactIdx !== -1) return exactIdx;
+            }
+            
+            // 2순위: 완벽 일치가 없으면 단어가 포함된 열을 찾되, 사람 이름/담당자 관련 단어는 절대 포함 안 되게 거릅니다.
             return arr.findIndex(v => {
                 const str = String(v).toUpperCase().replace(/\s/g, '');
                 const hasKeyword = keywords.some(k => str.includes(k));
@@ -262,9 +269,9 @@
 
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
             
-            // 💡 [해결] 거래처, 딜러명은 찾되, '담당'이나 '이름'이 들어간 열은 딜러명 열에서 제외
+            // 💡 여기서 '거래처명'을 1순위로 찾고, '담당, 사원, 이름, 대표' 등이 포함된 열은 철저히 무시합니다.
             const cIdx = { 
-                dealer: findCol(cHeader, ['거래처명', '딜러명', '거래처'], ['담당', '이름']),
+                dealer: findCol(cHeader, ['거래처명', '딜러명', '고객명', '거래처'], ['담당', '사원', '이름', '대표', '코드', 'CODE', '영업', '그룹']),
                 size: findCol(cHeader, ['SIZE', '사이즈']),
                 pttn: findCol(cHeader, ['PTTN', '패턴']),
                 type: findCol(cHeader, ['품목분류', 'TYPE']),
@@ -328,8 +335,9 @@
             }
 
             const h = histRows[hHeadIdx].map(v => String(v || '').trim());
+            // 💡 과거 데이터(Historical)에서도 똑같이 엄격한 기준으로 찾습니다.
             const idx = {
-                dealer: findCol(h, ['거래처', '딜러'], ['담당', '이름']),
+                dealer: findCol(h, ['거래처명', '딜러명', '고객명', '거래처'], ['담당', '사원', '이름', '대표', '코드', 'CODE', '영업', '그룹']),
                 type: findCol(h, ['품목분류', 'TYPE']),
                 mtp: findCol(h, ['MTP']),
                 size: findCol(h, ['SIZE', '사이즈']),
