@@ -51,7 +51,6 @@
     </header>
 
     <main id="main-content" class="max-w-7xl mx-auto px-4 py-5 hidden">
-        
         <div class="flex justify-between items-end mb-4">
             <div class="flex flex-col">
                 <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sales Performance Dashboard</span>
@@ -66,20 +65,17 @@
                 <div class="flex items-baseline gap-1 mt-1"><span id="ytd-val" class="text-2xl md:text-5xl font-black text-slate-800">0</span><span class="text-slate-400 font-bold text-xs">본</span></div>
                 <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start">계산중</div>
             </div>
-
             <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between">
                 <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">작년 동기 누적</p>
                 <div class="flex items-baseline gap-1 mt-1 text-slate-400"><span id="ly-ytd-val" class="text-2xl md:text-5xl font-black">0</span><span class="text-slate-300 font-bold text-xs">본</span></div>
                 <p class="text-[9px] text-slate-400 mt-2">전년 동일 비중 보정</p>
             </div>
-
             <div class="bg-slate-800 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between">
                 <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">동기간 도달률</p>
                 <div id="attainment-ytd-pct" class="text-3xl md:text-5xl font-black text-emerald-400">0%</div>
                 <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-ytd-bar" class="bg-emerald-400 h-full w-0 transition-all duration-1000"></div></div>
                 <p class="text-[8px] text-slate-500 mt-2">5년평균 누적(<span id="target-ytd-val">0</span>) 기준</p>
             </div>
-
             <div class="bg-slate-900 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between border-t-2 border-indigo-500">
                 <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">연간 총 달성률</p>
                 <div id="attainment-total-pct" class="text-3xl md:text-5xl font-black text-indigo-400">0%</div>
@@ -103,19 +99,15 @@
                             <th class="px-6 py-4 sticky left-0 bg-slate-50 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">딜러명</th>
                             <th class="sortable px-4 py-4 text-right group relative" onclick="setSort('ly_ytd')">
                                 작년 동기 누적 <span id="sort-icon-ly_ytd"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[100px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">작년 같은 기간<br>누적 판매량</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right bg-red-50/30 text-red-900 border-l group relative" onclick="setSort('ytd')">
                                 올해 누계(YTD) <span id="sort-icon-ytd">▼</span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[130px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">올해 1월부터 누적량<br>( )는 전년비 성장률</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right group relative" onclick="setSort('atot')">
                                 5년 평균 1년 <span id="sort-icon-atot"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[110px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">과거 5년 동안의<br>1년 전체 평균량</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right group relative" onclick="setSort('aytd')">
                                 5년 평균 누적 <span id="sort-icon-aytd"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[120px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">과거 5년 동기간<br>평균 누적 판매량</div>
                             </th>
                             <th class="px-4 py-4 text-right">연간 달성률</th>
                             <th class="px-4 py-4 text-right">동기간 도달률</th>
@@ -135,7 +127,7 @@
 
         async function init() {
             const t = new Date().getTime();
-            // 💡 [핵심] 뼈대파일(Historical)과 원본실적파일(Current)을 동시에 가져옵니다.
+            // 💡 뼈대파일(Historical)과 방금 확인하신 원본실적파일(Current)을 동시에 가져옵니다.
             const histUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/historical_data.xlsx?t=${t}`;
             const currUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/current_sales.xlsx?t=${t}`;
             
@@ -164,32 +156,62 @@
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
-            // --- 💡 1. WOS 원본 실적(Current)에서 QTY 싹쓸이 합산 ---
-            const cHeader = currRows[0].map(v => String(v || '').trim());
-            const cIdx = { dealer: cHeader.indexOf('거래처'), size: cHeader.indexOf('SIZE'), pttn: cHeader.indexOf('PTTN') };
+            // 💡 1. WOS 파일(Current)에서 헤더 찾기
+            let cHeadIdx = 0;
+            for(let i=0; i<Math.min(10, currRows.length); i++) {
+                const rowStr = currRows[i].map(v=>String(v||'')).join('');
+                if(rowStr.includes('거래처') && rowStr.includes('SIZE')) {
+                    cHeadIdx = i;
+                    break;
+                }
+            }
+
+            const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
+            const cIdx = { 
+                dealer: cHeader.indexOf('거래처'), 
+                size: cHeader.indexOf('SIZE'), 
+                pttn: cHeader.indexOf('PTTN'),
+                total: cHeader.indexOf('합계수량') // 💡 합계수량 컬럼 직행!
+            };
             
-            // 컬럼 이름에 'QTY'가 포함된 모든 위치 찾기 (월별 파편화된 데이터 모으기)
+            // 혹시 합계수량이 없으면 흩어진 QTY라도 긁어모으는 예비망
             const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
 
             const currMap = {};
-            // 띄어쓰기, 괄호, 슬래시, '주' 글자 제거하고 대문자로 통일 (초강력 맵핑)
+            // 💡 초강력 매핑: 띄어쓰기, 슬래시(/), 괄호(), '주' 글자를 싹 날리고 대문자로 통일
             const cleanStr = str => String(str || '').replace(/[\s\/\(\)주]/g, '').toUpperCase();
 
-            for (let i = 1; i < currRows.length; i++) {
+            // 진짜 데이터 행부터 읽기 시작
+            for (let i = cHeadIdx + 1; i < currRows.length; i++) {
                 const r = currRows[i];
-                if (!r[cIdx.dealer]) continue;
+                if (!r || !r[cIdx.dealer]) continue;
                 
                 const key = cleanStr(r[cIdx.dealer]) + cleanStr(r[cIdx.size]) + cleanStr(r[cIdx.pttn]);
                 let totalQty = 0;
                 
-                // 가로로 월별 QTY들을 모두 더함
-                qtyIndices.forEach(idx => { totalQty += parseFloat(r[idx]) || 0; });
+                // 합계수량 칸이 있으면 그대로 쓰고, 없으면 QTY를 다 더함
+                if (cIdx.total !== -1 && r[cIdx.total]) {
+                    totalQty = parseFloat(String(r[cIdx.total]).replace(/,/g, '')) || 0;
+                } else {
+                    qtyIndices.forEach(idx => { 
+                        totalQty += parseFloat(String(r[idx] || '').replace(/,/g, '')) || 0; 
+                    });
+                }
                 
                 currMap[key] = (currMap[key] || 0) + totalQty;
             }
 
-            // --- 💡 2. Historical 뼈대에 실적 끼워넣기 ---
-            const h = histRows[0].map(v => String(v || '').trim());
+            // 💡 2. 뼈대 파일(Historical)에서 헤더 찾기
+            let hHeadIdx = 0;
+            for(let i=0; i<Math.min(10, histRows.length); i++) {
+                const rowStr = histRows[i].map(v=>String(v||'')).join('');
+                if(rowStr.includes('거래처명') && rowStr.includes('사이즈')) {
+                    hHeadIdx = i;
+                    break;
+                }
+            }
+
+            const h = histRows[hHeadIdx].map(v => String(v || '').trim());
             const idx = {
                 dealer: h.indexOf('거래처명'), type: h.indexOf('품목분류'), mtp: h.indexOf('MTP분류'),
                 size: h.indexOf('사이즈'), pttn: h.indexOf('패턴명'),
@@ -197,11 +219,9 @@
             };
             const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.indexOf(`${m}월(5년평균)`);
 
-            fullData = histRows.slice(1).filter(r => r[idx.dealer]).map(r => {
-                // 뼈대 파일도 동일하게 매핑 키 생성
+            // 뼈대에 실적 끼워넣기
+            fullData = histRows.slice(hHeadIdx + 1).filter(r => r && r[idx.dealer]).map(r => {
                 const histKey = cleanStr(r[idx.dealer]) + cleanStr(r[idx.size]) + cleanStr(r[idx.pttn]);
-                
-                // 위에서 계산한 진짜 올해 실적(YTD)을 꽂아넣음
                 const actualYtd = currMap[histKey] || 0; 
 
                 const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
@@ -216,7 +236,7 @@
 
             const mtps = [...new Set(fullData.map(d => d.mtp))].sort();
             document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>' + mtps.map(m => `<option value="${m}">${m}</option>`).join('');
-            document.getElementById('month-select').innerHTML = Array.from({length:12}, (_,i)=> `<option value="${i+1}" ${i+1===selectedMonth?'selected':''}>${i+1}월 실적</option>`).join('');
+            document.getElementById('month-select').innerHTML = Array.from({length:12}, (_,i)=> `<option value="${i+1}" ${i+1===selectedMonth?'selected':''}>${i+1}월 마감 기준</option>`).join('');
             render();
         }
 
