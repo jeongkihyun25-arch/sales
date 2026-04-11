@@ -239,15 +239,21 @@
             }
         }
 
-        // 💡 [단어 매칭 엄격화] 1순위: 정확히 일치하는 이름, 2순위: '담당/사원' 등 제외하고 포함하는 이름
-        const findCol = (arr, keywords) => {
-            let exactIdx = arr.findIndex(v => keywords.some(k => String(v).toUpperCase().replace(/\s/g, '') === k));
+        // 💡 [핵심 안전 수정] 기현님의 기존 코드를 100% 유지하면서 1순위 강제 지정만 살짝 추가!
+        const findCol = (arr, keywords, excludeWords = []) => {
+            // 1. 거래처명/딜러명이라는 글자와 100% 똑같은 열이 있다면 묻지도 따지지도 않고 바로 그걸 가져옴
+            const exactIdx = arr.findIndex(v => {
+                const str = String(v).toUpperCase().replace(/\s/g, '');
+                return keywords.includes(str);
+            });
             if (exactIdx !== -1) return exactIdx;
-            
+
+            // 2. 만약 똑같은 게 없으면 기존 방식(포함하는 단어 찾기)으로 돌아감 (안전장치)
             return arr.findIndex(v => {
                 const str = String(v).toUpperCase().replace(/\s/g, '');
-                if (str.includes('담당') || str.includes('사원') || str.includes('이름') || str.includes('직원')) return false;
-                return keywords.some(k => str.includes(k));
+                const hasKeyword = keywords.some(k => str.includes(k));
+                const hasExclude = excludeWords.length > 0 && excludeWords.some(e => str.includes(e));
+                return hasKeyword && !hasExclude;
             });
         };
 
@@ -255,7 +261,8 @@
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
             let cHeadIdx = 0;
-            for(let i=0; i<Math.min(10, currRows.length); i++) {
+            // 💡 [안전 수정] 넉넉하게 15번째 줄 안에서 헤더를 찾도록 안전하게 늘림
+            for(let i=0; i<Math.min(15, currRows.length); i++) {
                 const rowStr = currRows[i].map(v=>String(v||'')).join('');
                 if(rowStr.includes('거래처') && rowStr.includes('SIZE')) {
                     cHeadIdx = i; break;
@@ -264,8 +271,9 @@
 
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
             
+            // 💡 [안전 수정] 차단 단어 목록(excludeWords)을 아주 강력하게 보강함
             const cIdx = { 
-                dealer: findCol(cHeader, ['거래처명', '고객명', '딜러명', '거래처']),
+                dealer: findCol(cHeader, ['거래처명', '거래처', '딜러명', '고객명'], ['담당', '사원', '이름', '대표', '성명', '영업', '코드', 'CODE', '그룹']),
                 size: findCol(cHeader, ['SIZE', '사이즈']),
                 pttn: findCol(cHeader, ['PTTN', '패턴']),
                 type: findCol(cHeader, ['품목분류', 'TYPE']),
@@ -321,7 +329,7 @@
             }
 
             let hHeadIdx = 0;
-            for(let i=0; i<Math.min(10, histRows.length); i++) {
+            for(let i=0; i<Math.min(15, histRows.length); i++) {
                 const rowStr = histRows[i].map(v=>String(v||'')).join('');
                 if(rowStr.includes('거래처명') && rowStr.includes('사이즈')) {
                     hHeadIdx = i; break;
@@ -330,7 +338,7 @@
 
             const h = histRows[hHeadIdx].map(v => String(v || '').trim());
             const idx = {
-                dealer: findCol(h, ['거래처명', '고객명', '딜러명', '거래처']),
+                dealer: findCol(h, ['거래처명', '거래처', '딜러명', '고객명'], ['담당', '사원', '이름', '대표', '성명', '영업', '코드', 'CODE', '그룹']),
                 type: findCol(h, ['품목분류', 'TYPE']),
                 mtp: findCol(h, ['MTP']),
                 size: findCol(h, ['SIZE', '사이즈']),
