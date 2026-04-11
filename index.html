@@ -16,6 +16,7 @@
         .table-scroll { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
         .type-active { background-color: #0f172a; color: white; border-color: #0f172a; }
         .type-inactive { background-color: white; color: #64748b; border: 1px solid #e2e8f0; }
+        /* 💡 말풍선(Tooltip) 스타일 복구 */
         .tooltip-text { transition: opacity 0.2s ease, transform 0.2s ease; z-index: 100; word-break: keep-all; line-height: 1.4; pointer-events: none; }
         @media (hover: hover) {
             .group-tooltip:hover .tooltip-text { opacity: 1; transform: translateY(0) translateX(-50%); }
@@ -30,7 +31,7 @@
 
     <div id="loader" class="loading-overlay">
         <div class="w-10 h-10 border-4 border-slate-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
-        <p class="font-bold text-slate-500 text-sm">최신 실적을 계산하고 있습니다...</p>
+        <p class="font-bold text-slate-500 text-sm">월별 실적을 정밀 합산 중입니다...</p>
     </div>
 
     <header class="sticky top-0 z-50 glass-header">
@@ -44,7 +45,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <select id="mtp-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold bg-white max-w-[85px] md:max-w-none shadow-sm outline-none"></select>
+                <select id="mtp-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold bg-white max-w-[85px] md:max-w-none shadow-sm outline-none">
+                    <option value="ALL">전체 MTP</option>
+                </select>
                 <select id="month-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] font-bold bg-white shadow-sm outline-none"></select>
             </div>
         </div>
@@ -62,14 +65,14 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-10 text-left">
             <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between">
                 <div class="flex justify-between items-start">
-                    <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">올해 누적 (YTD)</p>
-                    <span class="px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-black rounded">WOS기준</span>
+                    <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">선택월 누적 (YTD)</p>
+                    <span class="px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-black rounded">WOS 월별합산</span>
                 </div>
                 <div class="flex items-baseline gap-1 mt-1">
                     <span id="ytd-val" class="text-2xl md:text-5xl font-black text-slate-800">0</span><span class="text-slate-400 font-bold text-xs">본</span>
                 </div>
                 <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start">계산중</div>
-                <p id="ytd-ly-total-text" class="text-[9px] text-slate-400 mt-2 font-medium">작년 1년 전체(-) 대비 -%</p>
+                <p id="ytd-ly-total-text" class="text-[9px] text-slate-400 mt-2 font-medium">작년 연간 전체 대비 -% 달성</p>
             </div>
 
             <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between">
@@ -118,7 +121,7 @@
                             </th>
                             <th class="sortable px-4 py-4 text-right bg-red-50/30 text-red-900 border-l group-tooltip relative" onclick="setSort('ytd')">
                                 올해 누계(YTD) <span id="sort-icon-ytd">▼</span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[140px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">WOS 실제 누적 수량<br>괄호( )는 전년비 성장률</div>
+                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[140px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">선택한 월까지의 실제 누적 수량<br>괄호( )는 전년비 성장률</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('atot')">
                                 5년 평균 1년 <span id="sort-icon-atot"></span>
@@ -126,7 +129,7 @@
                             </th>
                             <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('aytd')">
                                 5년 평균 누적 <span id="sort-icon-aytd"></span>
-                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[130px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">과거 5년 동안의<br>동기간 평균 누적 판매량</div>
+                                <div class="tooltip-text opacity-0 absolute top-full left-1/2 mt-1 w-[130px] bg-slate-800 text-white text-[9px] rounded py-1 px-1.5 text-center shadow-lg">과거 5년 동안의<br>선택월까지 누적 판매량</div>
                             </th>
                             <th class="sortable px-4 py-4 text-right hover:bg-slate-100 cursor-pointer transition-colors group-tooltip relative" onclick="setSort('pt')">
                                 연간 달성률 <span id="sort-icon-pt"></span>
@@ -147,7 +150,10 @@
     <script>
         const GITHUB_USER = "jeongkihyun25-arch";
         const REPO_NAME = "sales";
-        let fullData = [], currentType = 'ALL', selectedMonth = 1;
+        
+        let rawWosData = [];
+        let histBaseData = [];
+        let currentType = 'ALL', selectedMonth = 1, maxAvailableMonth = 1;
         let sortCol = 'ytd', sortDesc = true;
 
         async function init() {
@@ -179,7 +185,7 @@
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
-            // 1. WOS 파일(Current) 헤더 분석
+            // 1. WOS 원본 파일 헤더 분석
             let cHeadIdx = 0;
             for(let i=0; i<Math.min(10, currRows.length); i++) {
                 const rowStr = currRows[i].map(v=>String(v||'')).join('');
@@ -194,44 +200,54 @@
                 pttn: cHeader.indexOf('PTTN'), type: cHeader.indexOf('품목분류'), mtp: cHeader.indexOf('MTP분류')
             };
             
-            // 💡 자동 마감월 설정 (QTY 컬럼 개수 파악)
-            const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
-            if(qtyIndices.length > 0) {
-                selectedMonth = qtyIndices.length; // 예: QTY가 4개면 4월 마감
-            }
+            // 💡 월별 QTY 컬럼 추출 로직 (1, 2, 3, 4월 등을 자동 감지)
+            const qtyCols = [];
+            let monthCounter = 1;
+            cHeader.forEach((h, i) => {
+                if(h.includes('QTY') || h === 'QTY') {
+                    qtyCols.push({ idx: i, month: monthCounter });
+                    monthCounter++;
+                }
+            });
+            maxAvailableMonth = qtyCols.length > 0 ? qtyCols.length : 1;
+            selectedMonth = maxAvailableMonth; // 자동 마감월 세팅
 
-            const currMap = new Map();
             const cleanStr = str => String(str || '').replace(/[\s\/\(\)주]/g, '').toUpperCase();
 
-            // 💡 WOS 원본 데이터의 월별 QTY 정밀 합산 (Map 구조로 속도 극대화)
+            // 💡 WOS 월별 파편화 데이터 안전 병합 (속도 향상 및 중복 방지 Map 사용)
+            const wosMap = new Map();
             for (let i = cHeadIdx + 1; i < currRows.length; i++) {
                 const r = currRows[i];
                 if (!r) continue;
                 const dealerName = String(r[cIdx.dealer] || '').trim();
                 
-                // 합계줄 패스 (총합은 밑에서 개별 합산으로 완벽 일치시킴)
+                // 💡 [중요] 원본 맨 밑에 있는 '합계' 줄은 개별 딜러가 아니므로 무시합니다. (밑에서 자동 재합산됨)
                 if (!dealerName || dealerName.includes('합계') || dealerName.includes('총계')) continue;
                 
-                const key = cleanStr(r[cIdx.dealer]) + '|' + cleanStr(r[cIdx.size]) + '|' + cleanStr(r[cIdx.pttn]);
-                let totalQty = 0;
-                
-                qtyIndices.forEach(idx => { 
-                    const qtyVal = parseFloat(String(r[idx] || '').replace(/,/g, ''));
-                    if(!isNaN(qtyVal)) totalQty += qtyVal; 
+                const monthQtys = {};
+                qtyCols.forEach(col => {
+                    const qtyVal = parseFloat(String(r[col.idx] || '').replace(/,/g, ''));
+                    monthQtys[col.month] = isNaN(qtyVal) ? 0 : qtyVal;
                 });
-                
-                if(totalQty === 0) continue; // 속도 최적화를 위해 0본은 제외
 
-                if (!currMap.has(key)) {
-                    currMap.set(key, {
+                const key = cleanStr(r[cIdx.dealer]) + '|' + cleanStr(r[cIdx.size]) + '|' + cleanStr(r[cIdx.pttn]);
+                
+                if (!wosMap.has(key)) {
+                    wosMap.set(key, {
+                        key: key,
                         dealer: dealerName.replace(/\(주\)/g,'').trim(), 
                         size: String(r[cIdx.size]||'-'), pttn: String(r[cIdx.pttn]||'-'),
                         type: String(r[cIdx.type]||'기타'), mtp: String(r[cIdx.mtp]||'기타'),
-                        qty: 0
+                        monthQtys: monthQtys
+                    });
+                } else {
+                    const existing = wosMap.get(key);
+                    qtyCols.forEach(col => {
+                        existing.monthQtys[col.month] += monthQtys[col.month];
                     });
                 }
-                currMap.get(key).qty += totalQty;
             }
+            rawWosData = Array.from(wosMap.values());
 
             // 2. 뼈대 파일(Historical) 헤더 분석
             let hHeadIdx = 0;
@@ -250,56 +266,29 @@
             };
             const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.indexOf(`${m}월(5년평균)`);
 
-            const mappedKeys = new Set();
-            fullData = [];
-
-            // 💡 1단계: 기존 뼈대에 올해 실적 덮어쓰기
+            histBaseData = [];
             histRows.slice(hHeadIdx + 1).forEach(r => {
                 if (!r || !r[idx.dealer]) return;
-                
-                const histKey = cleanStr(r[idx.dealer]) + '|' + cleanStr(r[idx.size]) + '|' + cleanStr(r[idx.pttn]);
-                let actualYtd = 0;
-
-                if(currMap.has(histKey)) {
-                    actualYtd = currMap.get(histKey).qty;
-                    mappedKeys.add(histKey);
-                }
-
                 const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
                 
-                fullData.push({
+                histBaseData.push({
+                    key: cleanStr(r[idx.dealer]) + '|' + cleanStr(r[idx.size]) + '|' + cleanStr(r[idx.pttn]),
                     dealer: String(r[idx.dealer]), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
                     size: String(r[idx.size]||'-'), pttn: String(r[idx.pttn]||'-'),
-                    ytd: actualYtd, 
                     ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
                     atot: Math.max(0, parseFloat(r[idx.atot]) || 0), mAvg: mAvg
                 });
             });
 
-            // 💡 2단계: 뼈대에 없는 "신제품 / 신규거래처" 실적 자동 추가 (수량 누락 원천 차단!)
-            for (const [key, val] of currMap.entries()) {
-                if (!mappedKeys.has(key)) {
-                    const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = 0;
-                    fullData.push({
-                        dealer: val.dealer, type: val.type, mtp: val.mtp,
-                        size: val.size, pttn: val.pttn,
-                        ytd: val.qty, 
-                        ly_total: 0, atot: 0, mAvg: mAvg
-                    });
-                }
-            }
-
-            const mtps = [...new Set(fullData.map(d => d.mtp))].sort();
-            document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>' + mtps.map(m => `<option value="${m}">${m}</option>`).join('');
-            
-            // 💡 드롭다운 옵션 채우기 및 '자동 감지된 마감월' 선택하기
+            // 💡 에러 방지: 화면 랜더링 전에 필터를 기본값으로 강제 세팅
+            document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>';
             let monthOptions = '';
-            for(let i=1; i<=12; i++) {
+            for(let i=1; i<=maxAvailableMonth; i++) {
                 monthOptions += `<option value="${i}" ${i === selectedMonth ? 'selected' : ''}>${i}월 마감 기준</option>`;
             }
             document.getElementById('month-select').innerHTML = monthOptions;
             
-            render();
+            render(); // 화면 그리기 시작!
         }
 
         window.toggleDetail = function(idx) {
@@ -311,6 +300,9 @@
         function changeType(t) {
             currentType = t;
             ['ALL', 'PSR', 'TBR'].forEach(id => document.getElementById('type-'+id).className = id===t?'type-active px-3 py-1 rounded-md text-[11px] font-bold transition-all':'type-inactive px-3 py-1 rounded-md text-[11px] font-bold transition-all');
+            
+            // 타입이 변경되면 MTP를 전체로 초기화하여 백지 현상 방지
+            document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>';
             render();
         }
 
@@ -321,8 +313,12 @@
         }
 
         function render() {
-            selectedMonth = parseInt(document.getElementById('month-select').value);
-            const selectedMtp = document.getElementById('mtp-select').value;
+            const monthSelect = document.getElementById('month-select');
+            selectedMonth = monthSelect.value ? parseInt(monthSelect.value) : maxAvailableMonth;
+            
+            const mtpSelect = document.getElementById('mtp-select');
+            const selectedMtp = mtpSelect.value || 'ALL';
+            
             const search = document.getElementById('search-input').value.toLowerCase();
 
             ['ly_ytd', 'ytd', 'atot', 'aytd', 'pt', 'py'].forEach(c => {
@@ -330,10 +326,51 @@
                 if(el) el.innerText = sortCol === c ? (sortDesc ? '▼' : '▲') : '';
             });
 
-            let filtered = fullData;
+            // 💡 선택된 월(Month)까지만 QTY를 더하는 핵심 구역
+            const currMap = new Map();
+            rawWosData.forEach(r => {
+                let ytdSum = 0;
+                for(let m=1; m<=selectedMonth; m++) {
+                    ytdSum += (r.monthQtys[m] || 0);
+                }
+                if (ytdSum !== 0) {
+                    currMap.set(r.key, { ...r, ytd: ytdSum });
+                }
+            });
+
+            // 💡 뼈대와 WOS 결합 (누락되는 데이터 단 하나도 없음!)
+            const combinedData = [];
+            const mappedKeys = new Set();
+            
+            histBaseData.forEach(h => {
+                const actualYtd = currMap.has(h.key) ? currMap.get(h.key).ytd : 0;
+                mappedKeys.add(h.key);
+                combinedData.push({ ...h, ytd: actualYtd });
+            });
+
+            for (const [key, val] of currMap.entries()) {
+                if (!mappedKeys.has(key)) {
+                    const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = 0;
+                    combinedData.push({
+                        key: key, dealer: val.dealer, type: val.type, mtp: val.mtp,
+                        size: val.size, pttn: val.pttn, ytd: val.ytd, 
+                        ly_total: 0, atot: 0, mAvg: mAvg
+                    });
+                }
+            }
+
+            // 필터링 적용
+            let filtered = combinedData;
             if (currentType !== 'ALL') filtered = filtered.filter(d => d.type === currentType);
             if (selectedMtp !== 'ALL') filtered = filtered.filter(d => d.mtp === selectedMtp);
 
+            // MTP 드롭다운 다시 그리기
+            if (selectedMtp === 'ALL') {
+                const mtps = [...new Set(combinedData.map(d => d.mtp))].sort();
+                mtpSelect.innerHTML = '<option value="ALL">전체 MTP</option>' + mtps.map(m => `<option value="${m}" ${m===selectedMtp?'selected':''}>${m}</option>`).join('');
+            }
+
+            // 딜러별 최종 요약
             const dMap = {};
             filtered.forEach(r => {
                 if(!dMap[r.dealer]) {
@@ -361,7 +398,7 @@
                 }
             });
 
-            // 💡 전체 합산
+            // 💡 전체 총합 산출 (상단 카드용)
             let T = { ytd:0, ly_ytd:0, ly_total:0, aytd:0, atot:0 };
             Object.values(dMap).forEach(v => { 
                 T.ytd += v.ytd; T.ly_ytd += v.ly_ytd; T.ly_total += v.ly_total; T.aytd += v.aytd; T.atot += v.atot; 
@@ -369,7 +406,7 @@
                 v.pt = v.atot > 0 ? (v.ytd / v.atot) * 100 : 0;
             });
 
-            // 상단 카드 업데이트 (설명 포함)
+            // 상단 카드 업데이트 (텍스트 설명 및 수치 입력)
             document.getElementById('ytd-val').innerText = Math.ceil(T.ytd).toLocaleString();
             document.getElementById('ly-ytd-val').innerText = Math.ceil(T.ly_ytd).toLocaleString();
             
@@ -379,7 +416,7 @@
             badge.className = `mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start ${yoy>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-600'}`;
             
             const lyTotalPct = T.ly_total > 0 ? Math.ceil((T.ytd / T.ly_total) * 100) : 0;
-            document.getElementById('ytd-ly-total-text').innerText = `작년 연간 전체(${Math.ceil(T.ly_total).toLocaleString()}본) 대비 ${lyTotalPct}% 달성`;
+            document.getElementById('ytd-ly-total-text').innerText = `작년 1년 전체(${Math.ceil(T.ly_total).toLocaleString()}본) 대비 ${lyTotalPct}% 달성`;
 
             const diff = Math.ceil(T.ytd - T.ly_ytd);
             document.getElementById('ytd-diff-text').innerHTML = `작년 동기 대비 <span class="${diff>=0?'text-emerald-500':'text-red-500'} font-black">${diff > 0 ? '+'+diff.toLocaleString() : diff.toLocaleString()}본</span> ${diff>=0?'초과':'미달'}`;
@@ -390,14 +427,16 @@
 
             document.getElementById('attainment-total-pct').innerText = (T.atot > 0 ? Math.ceil((T.ytd/T.atot)*100) : 0) + "%";
             document.getElementById('attainment-total-bar').style.width = Math.min(100, (T.atot > 0 ? (T.ytd/T.atot)*100 : 0)) + "%";
-            document.getElementById('target-total-detail').innerText = `올해 누적(${Math.ceil(T.ytd).toLocaleString()}본) / 5년 연간평균(${Math.ceil(T.atot).toLocaleString()}본)`;
+            document.getElementById('target-total-detail').innerText = `올해 누적(${Math.ceil(T.ytd).toLocaleString()}본) / 5년 1년평균(${Math.ceil(T.atot).toLocaleString()}본)`;
 
+            // 정렬 적용
             const entries = Object.entries(dMap)
                 .filter(([n]) => n.toLowerCase().includes(search))
                 .sort((a,b) => sortDesc ? b[1][sortCol] - a[1][sortCol] : a[1][sortCol] - b[1][sortCol]);
 
             document.getElementById('row-count').innerText = entries.length + " DEALERS";
 
+            // 표 HTML 그리기 (드릴다운 포함)
             document.getElementById('dealer-list').innerHTML = entries.map(([n, d], idx) => {
                 const py = Math.ceil(d.py);
                 const pt = Math.ceil(d.pt);
@@ -408,7 +447,7 @@
                 const pcrKeys = Object.keys(d.pcrDetails).filter(k => d.pcrDetails[k] !== 0).sort((a,b) => d.pcrDetails[b] - d.pcrDetails[a]);
                 if(pcrKeys.length > 0) {
                     detailHtml += `<div class="flex-1 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="font-black text-[10px] text-slate-400 mb-2 border-b border-slate-50 pb-1 uppercase">PCR 패턴별 판매량</h4>
+                        <h4 class="font-black text-[10px] text-slate-400 mb-2 border-b border-slate-50 pb-1 uppercase">PCR 패턴별 ${selectedMonth}월 누적</h4>
                         <table class="w-full text-left text-[10px] text-slate-600"><tbody>
                             ${pcrKeys.map(k => `<tr><td class="py-1">${k}</td><td class="text-right font-black ${d.pcrDetails[k] < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.pcrDetails[k]).toLocaleString()}</td></tr>`).join('')}
                         </tbody></table>
@@ -418,7 +457,7 @@
                 const tbrKeys = Object.keys(d.tbrDetails).filter(k => d.tbrDetails[k] !== 0).sort((a,b) => d.tbrDetails[b] - d.tbrDetails[a]);
                 if(tbrKeys.length > 0) {
                     detailHtml += `<div class="flex-1 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                        <h4 class="font-black text-[10px] text-slate-400 mb-2 border-b border-slate-50 pb-1 uppercase">TBR 규격/패턴별 판매량</h4>
+                        <h4 class="font-black text-[10px] text-slate-400 mb-2 border-b border-slate-50 pb-1 uppercase">TBR 규격/패턴별 ${selectedMonth}월 누적</h4>
                         <table class="w-full text-left text-[10px] text-slate-600"><tbody>
                             ${tbrKeys.map(k => `<tr><td class="py-1">${k}</td><td class="text-right font-black ${d.tbrDetails[k] < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.tbrDetails[k]).toLocaleString()}</td></tr>`).join('')}
                         </tbody></table>
