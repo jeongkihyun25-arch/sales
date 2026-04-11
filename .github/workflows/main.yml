@@ -4,9 +4,13 @@ on:
   schedule:
     # 월-금, 한국시간 09:10 ~ 20:10 (매시간 10분 실행)
     - cron: '10 0-11 * * 1-5'
-  workflow_dispatch: # 필요할 때 언제든 'Run workflow' 버튼으로 돌릴 수 있습니다.
+  workflow_dispatch: 
 
-# 💡 403 에러 방지를 위한 필수 쓰기 권한 설정
+# 💡 최신 Node.js 24 환경을 강제로 사용하여 경고를 제거합니다.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# 403 에러 방지를 위한 필수 쓰기 권한
 permissions:
   contents: write
 
@@ -25,15 +29,14 @@ jobs:
       - name: 필수 라이브러리 설치
         run: pip install -r requirements.txt
 
-      - name: 데이터 수집 및 실적 업데이트 실행
+      - name: 데이터 수집 및 업데이트 실행
         env:
           WOS_ID: ${{ secrets.WOS_ID }}
           WOS_PW: ${{ secrets.WOS_PW }}
         run: python main.py
 
-      - name: 변경사항 깃허브에 커밋 및 푸시
+      - name: 변경사항 깃허브에 반영
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "매시간 자동 업데이트: current_sales.xlsx 갱신 완료"
-          # 💡 사용자님 말씀대로 이 파일만 계속 갈아 끼우도록 설정했습니다.
+          commit_message: "매시간 자동 업데이트 완료 (Node 24 적용)"
           file_pattern: 'current_sales.xlsx'
