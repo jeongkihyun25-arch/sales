@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BSTK 통합 실적 분석 시스템</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; letter-spacing: -0.02em; background-color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+        .bstk-red { color: #E30613; }
+        .bg-bstk-red { background-color: #E30613; }
+        .glass-header { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(226, 232, 240, 0.8); }
+        .card-shadow { box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05); }
+        .table-scroll { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+        .type-active { background-color: #0f172a; color: white; border-color: #0f172a; }
+        .type-inactive { background-color: white; color: #64748b; border: 1px solid #e2e8f0; }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased overflow-x-hidden selection:bg-red-100 selection:text-red-900">
+
+    <div id="loader" class="loading-overlay">
+        <div class="w-12 h-12 border-4 border-slate-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
+        <p class="font-black text-slate-600">데이터 정합성 보정 중...</p>
+    </div>
+
+    <header class="sticky top-0 z-50 glass-header">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2 md:gap-4">
+                <div class="bg-gradient-to-br from-[#E30613] to-[#B0000A] text-white font-black px-2.5 md:px-3 py-1 md:py-1.5 rounded-lg text-[10px] md:text-xs italic">BSTK</div>
+                <div class="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                    <button onclick="changeType('ALL')" id="type-ALL" class="type-active px-3 py-1 rounded-lg text-[11px] md:text-xs font-bold transition-all">전체</button>
+                    <button onclick="changeType('PSR')" id="type-PSR" class="type-inactive px-3 py-1 rounded-lg text-[11px] md:text-xs font-bold transition-all">PCR</button>
+                    <button onclick="changeType('TBR')" id="type-TBR" class="type-inactive px-3 py-1 rounded-lg text-[11px] md:text-xs font-bold transition-all">TBR</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <select id="mtp-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] md:text-xs font-bold bg-white outline-none max-w-[90px] md:max-w-none shadow-sm"></select>
+                <select id="month-select" onchange="render()" class="border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] md:text-xs font-bold bg-white outline-none shadow-sm"></select>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content" class="max-w-7xl mx-auto px-4 md:px-6 py-5 md:py-8 hidden">
+        
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-10 text-left">
+            <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between group">
+                <div>
+                    <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">올해 누적 (YTD)</p>
+                    <div class="flex items-baseline gap-1 mt-1"><span id="ytd-val" class="text-2xl md:text-5xl font-black text-slate-800">0</span><span class="text-slate-400 font-bold text-xs">본</span></div>
+                </div>
+                <div id="ytd-yoy-badge" class="mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start">계산중</div>
+            </div>
+
+            <div class="bg-white p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] card-shadow border border-slate-100 flex flex-col justify-between">
+                <div>
+                    <p class="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wide">작년 동기 누적</p>
+                    <div class="flex items-baseline gap-1 mt-1 text-slate-400"><span id="ly-ytd-val" class="text-2xl md:text-5xl font-black">0</span><span class="text-slate-300 font-bold text-xs">본</span></div>
+                </div>
+                <p class="text-[9px] text-slate-400 mt-2">전년 동일 비중 기준</p>
+            </div>
+
+            <div class="bg-slate-800 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between">
+                <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">동기간 도달률</p>
+                <div id="attainment-ytd-pct" class="text-3xl md:text-5xl font-black text-emerald-400">0%</div>
+                <div class="w-full bg-slate-700 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-ytd-bar" class="bg-emerald-400 h-full w-0 transition-all duration-1000"></div></div>
+                <p class="text-[8px] text-slate-500 mt-2">5년평균 누적(<span id="target-ytd-val">0</span>) 기준</p>
+            </div>
+
+            <div class="bg-slate-900 p-4 md:p-6 rounded-[1.2rem] md:rounded-[2rem] text-white card-shadow flex flex-col justify-between border-t-2 border-indigo-500">
+                <p class="text-[9px] md:text-[11px] font-bold text-slate-300 uppercase tracking-widest">연간 총 달성률</p>
+                <div id="attainment-total-pct" class="text-3xl md:text-5xl font-black text-indigo-400">0%</div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2"><div id="attainment-total-bar" class="bg-indigo-400 h-full w-0 transition-all duration-1000"></div></div>
+                <p class="text-[8px] text-slate-500 mt-2">5년평균 연간(<span id="target-total-val">0</span>) 기준</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-[1.5rem] md:rounded-[2.5rem] card-shadow border border-slate-100 overflow-hidden flex flex-col">
+            <div class="px-4 md:px-8 py-4 md:py-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-left">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-black text-slate-800 text-sm md:text-lg">거래처별 실적 분석</h3>
+                    <span id="row-count" class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold">0건</span>
+                </div>
+                <input id="search-input" oninput="render()" type="text" placeholder="대리점명 또는 초성 검색" class="w-full md:w-80 border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold bg-slate-50 outline-none">
+            </div>
+            <div class="overflow-x-auto table-scroll">
+                <table class="w-full text-left whitespace-nowrap min-w-[1000px]">
+                    <thead>
+                        <tr class="bg-slate-50/80 text-[9px] md:text-[10px] font-black text-slate-500 uppercase border-b border-slate-200">
+                            <th class="px-6 py-4 sticky left-0 bg-slate-50 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">딜러명</th>
+                            <th class="px-4 py-4 text-right">작년 동기</th>
+                            <th class="sortable px-4 py-4 text-right bg-red-50/30 text-red-900 border-l" onclick="setSort('ytd')">올해 누계 ▼</th>
+                            <th class="sortable px-4 py-4 text-right" onclick="setSort('atot')">5년평균 1년</th>
+                            <th class="sortable px-4 py-4 text-right" onclick="setSort('aytd')">5년평균 누적</th>
+                            <th class="px-4 py-4 text-right">연간 달성률</th>
+                            <th class="px-4 py-4 text-right">동기간 도달률</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dealer-list" class="divide-y divide-slate-100 text-[11px] md:text-sm font-bold"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const GITHUB_USER = "jeongkihyun25-arch";
+        const REPO_NAME = "sales";
+        let fullData = [], currentType = 'ALL', selectedMonth = 4; // 기본 4월로 설정
+        let sortCol = 'ytd', sortDesc = true;
+
+        async function init() {
+            const t = new Date().getTime();
+            const url = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/historical_data.xlsx?t=${t}`;
+            try {
+                const res = await fetch(url);
+                const ab = await res.arrayBuffer();
+                const wb = XLSX.read(new Uint8Array(ab), {type: 'array'});
+                processData(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1}));
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('main-content').classList.remove('hidden');
+            } catch (e) {
+                alert("데이터를 불러오지 못했습니다. 파일명을 다시 확인해주세요.");
+            }
+        }
+
+        function processData(rows) {
+            const h = rows[0].map(v => String(v || '').trim());
+            const idx = {
+                dealer: h.indexOf('거래처명'), type: h.indexOf('품목분류'), mtp: h.indexOf('MTP분류'),
+                y25: h.indexOf('2025년'), y26: h.indexOf('2026년(당해)'), atot: h.indexOf('5년평균(연간)')
+            };
+            const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.indexOf(`${m}월(5년평균)`);
+
+            fullData = rows.slice(1).filter(r => r[idx.dealer]).map(r => {
+                const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
+                return {
+                    dealer: String(r[idx.dealer]), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
+                    ytd: Math.max(0, parseFloat(r[idx.y26]) || 0), ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
+                    atot: Math.max(0, parseFloat(r[idx.atot]) || 0), mAvg: mAvg
+                };
+            });
+
+            const mtps = [...new Set(fullData.map(d => d.mtp))].sort();
+            document.getElementById('mtp-select').innerHTML = '<option value="ALL">전체 MTP</option>' + mtps.map(m => `<option value="${m}">${m}</option>`).join('');
+            document.getElementById('month-select').innerHTML = Array.from({length:12}, (_,i)=> `<option value="${i+1}" ${i+1===selectedMonth?'selected':''}>${i+1}월</option>`).join('');
+            render();
+        }
+
+        function changeType(t) {
+            currentType = t;
+            ['ALL', 'PSR', 'TBR'].forEach(id => document.getElementById('type-'+id).className = id===t?'type-active px-3 py-1 rounded-lg text-[11px] md:text-xs font-bold transition-all':'type-inactive px-3 py-1 rounded-lg text-[11px] md:text-xs font-bold transition-all');
+            render();
+        }
+
+        function render() {
+            selectedMonth = parseInt(document.getElementById('month-select').value);
+            const selectedMtp = document.getElementById('mtp-select').value;
+            const search = document.getElementById('search-input').value.toLowerCase();
+
+            let filtered = fullData;
+            if (currentType !== 'ALL') filtered = filtered.filter(d => d.type === currentType);
+            if (selectedMtp !== 'ALL') filtered = filtered.filter(d => d.mtp === selectedMtp);
+
+            const dMap = {};
+            filtered.forEach(r => {
+                if(!dMap[r.dealer]) dMap[r.dealer] = { ytd:0, ly_ytd:0, atot:0, aytd:0 };
+                dMap[r.dealer].ytd += r.ytd;
+                dMap[r.dealer].atot += r.atot;
+                
+                let ytdW = 0, fullW = 0;
+                for(let m=1; m<=12; m++) {
+                    fullW += r.mAvg[m];
+                    if(m <= selectedMonth) { ytdW += r.mAvg[m]; dMap[r.dealer].aytd += r.mAvg[m]; }
+                }
+                
+                // 💡 버그 수정: 0으로 나누는 연산 방지 (천문학적 숫자 발생 원인 차단)
+                const ratio = (fullW > 0) ? (ytdW / fullW) : (selectedMonth / 12);
+                dMap[r.dealer].ly_ytd += (r.ly_total * ratio);
+            });
+
+            let T = { ytd:0, ly_ytd:0, aytd:0, atot:0 };
+            Object.values(dMap).forEach(v => { T.ytd += v.ytd; T.ly_ytd += v.ly_ytd; T.aytd += v.aytd; T.atot += v.atot; });
+
+            document.getElementById('ytd-val').innerText = Math.ceil(T.ytd).toLocaleString();
+            document.getElementById('ly-ytd-val').innerText = Math.ceil(T.ly_ytd).toLocaleString();
+            
+            const yoy = T.ly_ytd > 0 ? Math.ceil(((T.ytd / T.ly_ytd) - 1) * 100) : 0;
+            const badge = document.getElementById('ytd-yoy-badge');
+            badge.innerText = `전년동기비 ${yoy}% ${yoy >= 0 ? '▲' : '▼'}`;
+            badge.className = `mt-2 inline-block px-2 py-0.5 rounded-md text-[9px] font-black self-start ${yoy>=0?'bg-emerald-50 text-emerald-600':'bg-red-50 text-red-600'}`;
+
+            document.getElementById('attainment-ytd-pct').innerText = (T.aytd > 0 ? Math.ceil((T.ytd/T.aytd)*100) : 0) + "%";
+            document.getElementById('attainment-ytd-bar').style.width = Math.min(100, (T.aytd > 0 ? (T.ytd/T.aytd)*100 : 0)) + "%";
+            document.getElementById('target-ytd-val').innerText = Math.ceil(T.aytd).toLocaleString();
+
+            document.getElementById('attainment-total-pct').innerText = (T.atot > 0 ? Math.ceil((T.ytd/T.atot)*100) : 0) + "%";
+            document.getElementById('attainment-total-bar').style.width = Math.min(100, (T.atot > 0 ? (T.ytd/T.atot)*100 : 0)) + "%";
+            document.getElementById('target-total-val').innerText = Math.ceil(T.atot).toLocaleString();
+
+            const entries = Object.entries(dMap).filter(([n]) => n.toLowerCase().includes(search)).sort((a,b) => sortDesc ? b[1][sortCol] - a[1][sortCol] : a[1][sortCol] - b[1][sortCol]);
+            document.getElementById('row-count').innerText = entries.length + "건";
+
+            document.getElementById('dealer-list').innerHTML = entries.map(([n, d]) => {
+                const py = d.aytd > 0 ? Math.ceil((d.ytd/d.aytd)*100) : 0;
+                const pt = d.atot > 0 ? Math.ceil((d.ytd/d.atot)*100) : 0;
+                const yoyDeal = d.ly_ytd > 0 ? Math.ceil(((d.ytd/d.ly_ytd)-1)*100) : 0;
+                return `<tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 sticky left-0 bg-white font-bold border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">${n}</td>
+                    <td class="px-4 py-4 text-right text-slate-400">${Math.ceil(d.ly_ytd).toLocaleString()}</td>
+                    <td class="px-4 py-4 text-right bg-red-50/20"><span class="bstk-red font-black">${Math.ceil(d.ytd).toLocaleString()}</span><span class="text-[9px] ml-1 ${yoyDeal>=0?'text-emerald-500':'text-red-500'}">(${yoyDeal>=0?'+':''}${yoyDeal}%)</span></td>
+                    <td class="px-4 py-4 text-right text-slate-500">${Math.ceil(d.atot).toLocaleString()}</td>
+                    <td class="px-4 py-4 text-right text-slate-500">${Math.ceil(d.aytd).toLocaleString()}</td>
+                    <td class="px-4 py-4 text-right"><span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black">${pt}%</span></td>
+                    <td class="px-4 py-4 text-right"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black">${py}%</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function setSort(col) { sortCol = col; sortDesc = !sortDesc; render(); }
+        window.onload = init;
+    </script>
+</body>
+</html>
