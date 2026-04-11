@@ -18,12 +18,13 @@
         .type-inactive { background-color: white; color: #64748b; border: 1px solid #e2e8f0; }
         .tooltip-text { transition: opacity 0.2s ease, transform 0.2s ease; z-index: 100; word-break: keep-all; line-height: 1.4; pointer-events: none; }
         @media (hover: hover) {
-            .group:hover .tooltip-text { opacity: 1; transform: translateY(0) translateX(-50%); }
-            .group:hover .tooltip-text.align-right { transform: translateY(0) translateX(0); }
+            .group-tooltip:hover .tooltip-text { opacity: 1; transform: translateY(0) translateX(-50%); }
         }
         th.sortable { cursor: pointer; user-select: none; }
         th.sortable:hover { background-color: #f8fafc; }
         .loading-overlay { position: fixed; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        /* 상세 메뉴 애니메이션 */
+        .detail-row { transition: all 0.3s ease-in-out; }
     </style>
 </head>
 <body class="text-slate-800 antialiased overflow-x-hidden selection:bg-red-100">
@@ -96,21 +97,25 @@
                 <table class="w-full text-left whitespace-nowrap min-w-[1000px]">
                     <thead>
                         <tr class="bg-slate-50/80 text-[9px] md:text-[10px] font-black text-slate-500 uppercase border-b border-slate-200">
-                            <th class="px-6 py-4 sticky left-0 bg-slate-50 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">딜러명</th>
-                            <th class="sortable px-4 py-4 text-right group relative" onclick="setSort('ly_ytd')">
+                            <th class="px-6 py-4 sticky left-0 bg-slate-50 z-30 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">딜러명 <span class="text-[8px] text-slate-400 font-normal ml-1">(클릭시 상세)</span></th>
+                            <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('ly_ytd')">
                                 작년 동기 누적 <span id="sort-icon-ly_ytd"></span>
                             </th>
-                            <th class="sortable px-4 py-4 text-right bg-red-50/30 text-red-900 border-l group relative" onclick="setSort('ytd')">
+                            <th class="sortable px-4 py-4 text-right bg-red-50/30 text-red-900 border-l group-tooltip relative" onclick="setSort('ytd')">
                                 올해 누계(YTD) <span id="sort-icon-ytd">▼</span>
                             </th>
-                            <th class="sortable px-4 py-4 text-right group relative" onclick="setSort('atot')">
+                            <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('atot')">
                                 5년 평균 1년 <span id="sort-icon-atot"></span>
                             </th>
-                            <th class="sortable px-4 py-4 text-right group relative" onclick="setSort('aytd')">
+                            <th class="sortable px-4 py-4 text-right group-tooltip relative" onclick="setSort('aytd')">
                                 5년 평균 누적 <span id="sort-icon-aytd"></span>
                             </th>
-                            <th class="px-4 py-4 text-right">연간 달성률</th>
-                            <th class="px-4 py-4 text-right">동기간 도달률</th>
+                            <th class="sortable px-4 py-4 text-right hover:bg-slate-100 cursor-pointer transition-colors" onclick="setSort('pt')">
+                                연간 달성률 <span id="sort-icon-pt"></span>
+                            </th>
+                            <th class="sortable px-4 py-4 text-right hover:bg-slate-100 cursor-pointer transition-colors" onclick="setSort('py')">
+                                동기간 도달률 <span id="sort-icon-py"></span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="dealer-list" class="divide-y divide-slate-100 text-[11px] md:text-sm font-bold"></tbody>
@@ -127,7 +132,6 @@
 
         async function init() {
             const t = new Date().getTime();
-            // 💡 뼈대파일(Historical)과 방금 확인하신 원본실적파일(Current)을 동시에 가져옵니다.
             const histUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/historical_data.xlsx?t=${t}`;
             const currUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO_NAME}/main/current_sales.xlsx?t=${t}`;
             
@@ -148,7 +152,7 @@
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('main-content').classList.remove('hidden');
             } catch (e) {
-                alert("데이터를 불러오는 중 문제가 발생했습니다. Actions 로봇이 성공했는지 확인해주세요.");
+                alert("데이터를 불러오는 중 문제가 발생했습니다.");
                 console.error(e);
             }
         }
@@ -156,32 +160,23 @@
         function processData(histRows, currRows) {
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
-            // 💡 1. WOS 파일(Current)에서 헤더 찾기
             let cHeadIdx = 0;
             for(let i=0; i<Math.min(10, currRows.length); i++) {
                 const rowStr = currRows[i].map(v=>String(v||'')).join('');
                 if(rowStr.includes('거래처') && rowStr.includes('SIZE')) {
-                    cHeadIdx = i;
-                    break;
+                    cHeadIdx = i; break;
                 }
             }
 
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
             const cIdx = { 
-                dealer: cHeader.indexOf('거래처'), 
-                size: cHeader.indexOf('SIZE'), 
-                pttn: cHeader.indexOf('PTTN'),
-                total: cHeader.indexOf('합계수량') // 💡 합계수량 컬럼 직행!
+                dealer: cHeader.indexOf('거래처'), size: cHeader.indexOf('SIZE'), 
+                pttn: cHeader.indexOf('PTTN'), total: cHeader.indexOf('합계수량') 
             };
-            
-            // 혹시 합계수량이 없으면 흩어진 QTY라도 긁어모으는 예비망
             const qtyIndices = cHeader.map((h, i) => h.includes('QTY') ? i : -1).filter(i => i !== -1);
-
             const currMap = {};
-            // 💡 초강력 매핑: 띄어쓰기, 슬래시(/), 괄호(), '주' 글자를 싹 날리고 대문자로 통일
             const cleanStr = str => String(str || '').replace(/[\s\/\(\)주]/g, '').toUpperCase();
 
-            // 진짜 데이터 행부터 읽기 시작
             for (let i = cHeadIdx + 1; i < currRows.length; i++) {
                 const r = currRows[i];
                 if (!r || !r[cIdx.dealer]) continue;
@@ -189,25 +184,19 @@
                 const key = cleanStr(r[cIdx.dealer]) + cleanStr(r[cIdx.size]) + cleanStr(r[cIdx.pttn]);
                 let totalQty = 0;
                 
-                // 합계수량 칸이 있으면 그대로 쓰고, 없으면 QTY를 다 더함
                 if (cIdx.total !== -1 && r[cIdx.total]) {
                     totalQty = parseFloat(String(r[cIdx.total]).replace(/,/g, '')) || 0;
                 } else {
-                    qtyIndices.forEach(idx => { 
-                        totalQty += parseFloat(String(r[idx] || '').replace(/,/g, '')) || 0; 
-                    });
+                    qtyIndices.forEach(idx => { totalQty += parseFloat(String(r[idx] || '').replace(/,/g, '')) || 0; });
                 }
-                
                 currMap[key] = (currMap[key] || 0) + totalQty;
             }
 
-            // 💡 2. 뼈대 파일(Historical)에서 헤더 찾기
             let hHeadIdx = 0;
             for(let i=0; i<Math.min(10, histRows.length); i++) {
                 const rowStr = histRows[i].map(v=>String(v||'')).join('');
                 if(rowStr.includes('거래처명') && rowStr.includes('사이즈')) {
-                    hHeadIdx = i;
-                    break;
+                    hHeadIdx = i; break;
                 }
             }
 
@@ -219,15 +208,14 @@
             };
             const mIdx = {}; for(let m=1; m<=12; m++) mIdx[m] = h.indexOf(`${m}월(5년평균)`);
 
-            // 뼈대에 실적 끼워넣기
             fullData = histRows.slice(hHeadIdx + 1).filter(r => r && r[idx.dealer]).map(r => {
                 const histKey = cleanStr(r[idx.dealer]) + cleanStr(r[idx.size]) + cleanStr(r[idx.pttn]);
                 const actualYtd = currMap[histKey] || 0; 
-
                 const mAvg = {}; for(let m=1; m<=12; m++) mAvg[m] = Math.max(0, parseFloat(r[mIdx[m]]) || 0);
                 
                 return {
                     dealer: String(r[idx.dealer]), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
+                    size: String(r[idx.size]||'-'), pttn: String(r[idx.pttn]||'-'), // 💡 상세 출력을 위해 추가
                     ytd: actualYtd, 
                     ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
                     atot: Math.max(0, parseFloat(r[idx.atot]) || 0), mAvg: mAvg
@@ -239,6 +227,13 @@
             document.getElementById('month-select').innerHTML = Array.from({length:12}, (_,i)=> `<option value="${i+1}" ${i+1===selectedMonth?'selected':''}>${i+1}월 마감 기준</option>`).join('');
             render();
         }
+
+        // 💡 아코디언 토글 함수
+        window.toggleDetail = function(idx) {
+            const el = document.getElementById('detail-' + idx);
+            if(el.classList.contains('hidden')) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        };
 
         function changeType(t) {
             currentType = t;
@@ -257,7 +252,7 @@
             const selectedMtp = document.getElementById('mtp-select').value;
             const search = document.getElementById('search-input').value.toLowerCase();
 
-            ['ly_ytd', 'ytd', 'atot', 'aytd'].forEach(c => {
+            ['ly_ytd', 'ytd', 'atot', 'aytd', 'pt', 'py'].forEach(c => {
                 const el = document.getElementById(`sort-icon-${c}`);
                 if(el) el.innerText = sortCol === c ? (sortDesc ? '▼' : '▲') : '';
             });
@@ -268,7 +263,10 @@
 
             const dMap = {};
             filtered.forEach(r => {
-                if(!dMap[r.dealer]) dMap[r.dealer] = { ytd:0, ly_ytd:0, atot:0, aytd:0 };
+                if(!dMap[r.dealer]) {
+                    // 💡 상세 데이터 저장을 위한 그릇 추가
+                    dMap[r.dealer] = { ytd:0, ly_ytd:0, atot:0, aytd:0, pcrDetails: {}, tbrDetails: {} };
+                }
                 dMap[r.dealer].ytd += r.ytd;
                 dMap[r.dealer].atot += r.atot;
                 
@@ -279,10 +277,25 @@
                 }
                 const ratio = (fullW > 0) ? (ytdW / fullW) : (selectedMonth / 12);
                 dMap[r.dealer].ly_ytd += (r.ly_total * ratio);
+
+                // 💡 드릴다운을 위한 상세 데이터 적재 (PSR=패턴, TBR=사이즈+패턴)
+                if(r.type === 'PSR') {
+                    if(!dMap[r.dealer].pcrDetails[r.pttn]) dMap[r.dealer].pcrDetails[r.pttn] = 0;
+                    dMap[r.dealer].pcrDetails[r.pttn] += r.ytd;
+                } else if (r.type === 'TBR') {
+                    const key = `${r.size} <span class="text-slate-300 font-normal mx-1">|</span> ${r.pttn}`;
+                    if(!dMap[r.dealer].tbrDetails[key]) dMap[r.dealer].tbrDetails[key] = 0;
+                    dMap[r.dealer].tbrDetails[key] += r.ytd;
+                }
             });
 
             let T = { ytd:0, ly_ytd:0, aytd:0, atot:0 };
-            Object.values(dMap).forEach(v => { T.ytd += v.ytd; T.ly_ytd += v.ly_ytd; T.aytd += v.aytd; T.atot += v.atot; });
+            Object.values(dMap).forEach(v => { 
+                T.ytd += v.ytd; T.ly_ytd += v.ly_ytd; T.aytd += v.aytd; T.atot += v.atot; 
+                // 💡 정렬을 위해 달성률(pt), 도달률(py) 미리 계산해두기
+                v.py = v.aytd > 0 ? (v.ytd / v.aytd) * 100 : 0;
+                v.pt = v.atot > 0 ? (v.ytd / v.atot) * 100 : 0;
+            });
 
             document.getElementById('ytd-val').innerText = Math.ceil(T.ytd).toLocaleString();
             document.getElementById('ly-ytd-val').innerText = Math.ceil(T.ly_ytd).toLocaleString();
@@ -300,25 +313,76 @@
             document.getElementById('attainment-total-bar').style.width = Math.min(100, (T.atot > 0 ? (T.ytd/T.atot)*100 : 0)) + "%";
             document.getElementById('target-total-val').innerText = Math.ceil(T.atot).toLocaleString();
 
+            // 💡 정렬 로직
             const entries = Object.entries(dMap)
                 .filter(([n]) => n.toLowerCase().includes(search))
                 .sort((a,b) => sortDesc ? b[1][sortCol] - a[1][sortCol] : a[1][sortCol] - b[1][sortCol]);
 
             document.getElementById('row-count').innerText = entries.length + " DEALERS";
 
-            document.getElementById('dealer-list').innerHTML = entries.map(([n, d]) => {
-                const py = d.aytd > 0 ? Math.ceil((d.ytd/d.aytd)*100) : 0;
-                const pt = d.atot > 0 ? Math.ceil((d.ytd/d.atot)*100) : 0;
+            // 💡 화면 렌더링
+            document.getElementById('dealer-list').innerHTML = entries.map(([n, d], idx) => {
+                const py = Math.ceil(d.py);
+                const pt = Math.ceil(d.pt);
                 const yoyDeal = d.ly_ytd > 0 ? Math.ceil(((d.ytd/d.ly_ytd)-1)*100) : 0;
-                return `<tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-6 py-4 sticky left-0 bg-white font-bold border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">${n}</td>
+                
+                // 💡 상세 펼침 내용 구성 (판매량이 있는 것만 노출, 많은 순 정렬)
+                let detailHtml = '<div class="p-3 bg-slate-50 border-b border-slate-100 flex flex-col md:flex-row gap-3">';
+                
+                const pcrKeys = Object.keys(d.pcrDetails).filter(k => d.pcrDetails[k] > 0).sort((a,b) => d.pcrDetails[b] - d.pcrDetails[a]);
+                if(pcrKeys.length > 0) {
+                    detailHtml += `<div class="flex-1 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-black text-[10px] text-slate-400 mb-2 border-b border-slate-50 pb-1 uppercase">PCR 패턴별 판매량</h4>
+                        <table class="w-full text-left text-[10px] text-slate-600"><tbody>
+                            ${pcrKeys.map(k => `<tr><td class="py-1">${k}</td><td class="text-right font-black bstk-red">${Math.ceil(d.pcrDetails[k]).toLocaleString()}</td></tr>`).join('')}
+                        </tbody></table>
+                    </div>`;
+                }
+
+                const tbrKeys = Object.keys(d.tbrDetails).filter(k => d.tbrDetails[k] > 0).sort((a,b) => d.tbrDetails[b] - d.tbrDetails[a]);
+                if(tbrKeys.length > 0) {
+                    detailHtml += `<div class="flex-1 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <h4 class="font-black text-[10px] text-slate-400 mb-2 border-b border-slate-50 pb-1 uppercase">TBR 규격/패턴별 판매량</h4>
+                        <table class="w-full text-left text-[10px] text-slate-600"><tbody>
+                            ${tbrKeys.map(k => `<tr><td class="py-1">${k}</td><td class="text-right font-black bstk-red">${Math.ceil(d.tbrDetails[k]).toLocaleString()}</td></tr>`).join('')}
+                        </tbody></table>
+                    </div>`;
+                }
+                detailHtml += '</div>';
+
+                return `
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer group" onclick="toggleDetail(${idx})">
+                    <td class="px-6 py-4 sticky left-0 bg-white group-hover:bg-slate-50 font-bold border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                        <div class="flex items-center justify-between">
+                            <span>${n}</span>
+                            <span class="text-[8px] text-slate-300 font-normal">상세보기 ▼</span>
+                        </div>
+                    </td>
                     <td class="px-4 py-4 text-right text-slate-400">${Math.ceil(d.ly_ytd).toLocaleString()}</td>
-                    <td class="px-4 py-4 text-right bg-red-50/20"><span class="bstk-red font-black">${Math.ceil(d.ytd).toLocaleString()}</span><span class="text-[9px] ml-1 ${yoyDeal>=0?'text-emerald-500':'text-red-500'}">(${yoyDeal>=0?'+':''}${yoyDeal}%)</span></td>
+                    <td class="px-4 py-4 text-right bg-red-50/20">
+                        <span class="bstk-red font-black">${Math.ceil(d.ytd).toLocaleString()}</span>
+                        <span class="text-[9px] ml-1 ${yoyDeal>=0?'text-emerald-500':'text-red-500'}">(${yoyDeal>=0?'+':''}${yoyDeal}%)</span>
+                    </td>
                     <td class="px-4 py-4 text-right text-slate-500">${Math.ceil(d.atot).toLocaleString()}</td>
                     <td class="px-4 py-4 text-right text-slate-500">${Math.ceil(d.aytd).toLocaleString()}</td>
-                    <td class="px-4 py-4 text-right"><span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black">${pt}%</span></td>
-                    <td class="px-4 py-4 text-right"><span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black">${py}%</span></td>
-                </tr>`;
+                    
+                    <td class="px-4 py-4 text-right">
+                        <div class="flex flex-col items-end">
+                            <span class="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black mb-0.5">${pt}%</span>
+                            <span class="text-[9px] text-slate-400">(${Math.ceil(d.ytd).toLocaleString()} / ${Math.ceil(d.atot).toLocaleString()})</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 text-right">
+                        <div class="flex flex-col items-end">
+                            <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black mb-0.5">${py}%</span>
+                            <span class="text-[9px] text-slate-400">(${Math.ceil(d.ytd).toLocaleString()} / ${Math.ceil(d.aytd).toLocaleString()})</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="detail-${idx}" class="hidden detail-row bg-slate-50">
+                    <td colspan="7" class="p-0">${(pcrKeys.length===0 && tbrKeys.length===0) ? '<div class="p-4 text-center text-xs text-slate-400">당해 실적 없음</div>' : detailHtml}</td>
+                </tr>
+                `;
             }).join('');
         }
 
