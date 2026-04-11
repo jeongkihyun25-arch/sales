@@ -6,8 +6,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 # 1. 시크릿 정보
 USER_ID = os.environ.get('WOS_ID')
@@ -39,7 +37,7 @@ driver.execute_cdp_cmd('Page.setDownloadBehavior', {'behavior': 'allow', 'downlo
 
 try:
     # 4. 로그인 및 페이지 이동
-    print("🚀 WOS 접속...")
+    print("🚀 WOS 접속 및 로그인...")
     driver.get('http://wos.bridgestone-korea.co.kr/')
     time.sleep(5)
     driver.find_element(By.ID, 'userID').send_keys(USER_ID)
@@ -67,37 +65,42 @@ try:
         if files:
             files.sort(key=lambda x: os.path.getmtime(os.path.join(temp_download_dir, x)))
             latest_file = files[-1]
-            print(f"✅ 다운로드 완료 확인: {latest_file}")
+            print(f"✅ 다운로드 완료: {latest_file}")
             break
         time.sleep(2)
 
-    # 6. 💡 [LT 대시보드 비법] 웹 형식(HTML) 강제 변환 파트
+    # 6. 💡 [핵심] LT 때 썼던 웹 형식 변환 비법 적용
     if latest_file:
         source_path = os.path.join(temp_download_dir, latest_file)
         target_path = os.path.join(current_dir, "current_sales.xlsx")
         
-        print(f"📊 [핵심] 웹 코드를 진짜 엑셀로 세탁 중...")
+        print(f"📊 데이터 변환 공정 시작...")
+        
+        # [비법 1] 웹 형식(HTML)으로 먼저 시도 (대부분의 WOS 파일)
         try:
-            # WOS 파일은 사실 '가짜 엑셀'입니다. 텍스트로 읽어서 HTML 테이블을 뽑아내야 합니다.
-            # 인코딩은 한글 깨짐 방지를 위해 cp949를 사용합니다.
+            print("...1단계 시도: 웹 형식(HTML/CP949) 읽기")
             with open(source_path, 'r', encoding='cp949', errors='ignore') as f:
-                html_text = f.read()
-                # pandas의 read_html을 사용하여 웹 표 정보를 긁어옵니다.
-                df_list = pd.read_html(html_text, flavor='html5lib')
-            
+                df_list = pd.read_html(f, flavor='html5lib')
             if df_list:
-                df = df_list[0]
-                # 여기서 진짜 엑셀(.xlsx) 파일로 저장합니다.
-                df.to_excel(target_path, index=False)
-                print(f"🎉 성공! 웹 형식을 완벽하게 엑셀로 변환했습니다.")
+                df_list[0].to_excel(target_path, index=False)
+                print(f"🎉 성공! 웹 형식을 진짜 엑셀로 변환했습니다.")
             else:
-                raise Exception("데이터 테이블을 찾을 수 없습니다.")
-                
+                raise Exception("표를 찾을 수 없음")
+        
+        # [비법 2] 웹 형식이 아닐 경우, 진짜 옛날 엑셀(.xls)로 시도
         except Exception as e:
-            print(f"⚠️ 웹 형식 변환 실패, 최후의 수단(강제 복사) 시도: {e}")
-            shutil.copy2(source_path, target_path)
+            print(f"⚠️ 1단계 실패, 2단계 시도: 진짜 옛날 엑셀(Binary XLS) 읽기")
+            try:
+                # 여기서 xlrd 엔진을 사용하여 읽습니다.
+                df = pd.read_excel(source_path, engine='xlrd')
+                df.to_excel(target_path, index=False)
+                print(f"✅ 성공! 옛날 엑셀 형식을 최신 엑셀로 변환했습니다.")
+            except Exception as e2:
+                print(f"❌ 모든 시도 실패. 원본 파일 자체에 문제가 있습니다: {e2}")
+                # 최후의 수단: 그냥 복사라도 합니다 (이때 엑셀 에러가 날 수 있음)
+                shutil.copy2(source_path, target_path)
     else:
-        raise Exception("❌ 결국 파일을 받지 못했습니다.")
+        raise Exception("❌ 파일을 다운로드하지 못했습니다.")
 
 except Exception as e:
     print(f"❌ 에러 발생: {e}")
