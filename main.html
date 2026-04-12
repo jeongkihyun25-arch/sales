@@ -239,16 +239,13 @@
             }
         }
 
-        // 💡 [핵심 안전 수정] 기현님의 기존 코드를 100% 유지하면서 1순위 강제 지정만 살짝 추가!
         const findCol = (arr, keywords, excludeWords = []) => {
-            // 1. 거래처명/딜러명이라는 글자와 100% 똑같은 열이 있다면 묻지도 따지지도 않고 바로 그걸 가져옴
             const exactIdx = arr.findIndex(v => {
                 const str = String(v).toUpperCase().replace(/\s/g, '');
                 return keywords.includes(str);
             });
             if (exactIdx !== -1) return exactIdx;
 
-            // 2. 만약 똑같은 게 없으면 기존 방식(포함하는 단어 찾기)으로 돌아감 (안전장치)
             return arr.findIndex(v => {
                 const str = String(v).toUpperCase().replace(/\s/g, '');
                 const hasKeyword = keywords.some(k => str.includes(k));
@@ -261,7 +258,6 @@
             if (!histRows || !currRows || histRows.length < 1 || currRows.length < 1) return;
 
             let cHeadIdx = 0;
-            // 💡 [안전 수정] 넉넉하게 15번째 줄 안에서 헤더를 찾도록 안전하게 늘림
             for(let i=0; i<Math.min(15, currRows.length); i++) {
                 const rowStr = currRows[i].map(v=>String(v||'')).join('');
                 if(rowStr.includes('거래처') && rowStr.includes('SIZE')) {
@@ -271,7 +267,6 @@
 
             const cHeader = currRows[cHeadIdx].map(v => String(v || '').trim());
             
-            // 💡 [안전 수정] 차단 단어 목록(excludeWords)을 아주 강력하게 보강함
             const cIdx = { 
                 dealer: findCol(cHeader, ['거래처명', '거래처', '딜러명', '고객명'], ['담당', '사원', '이름', '대표', '성명', '영업', '코드', 'CODE', '그룹']),
                 size: findCol(cHeader, ['SIZE', '사이즈']),
@@ -310,8 +305,13 @@
                 const key = cleanStr(r[cIdx.dealer]) + cleanStr(r[cIdx.size]) + cleanStr(r[cIdx.pttn]);
                 let totalQty = 0;
                 
-                qtyIndices.forEach(idx => { 
+                // 💡 [추가됨] 상세보기 뷰를 위해 월별 수량 임시 저장
+                const monthlyQty = {};
+                
+                qtyIndices.forEach((idx, mIndex) => { 
+                    const m = mIndex + 1;
                     const qtyVal = parseFloat(String(r[idx] || '').replace(/,/g, ''));
+                    monthlyQty[m] = !isNaN(qtyVal) ? qtyVal : 0;
                     if(!isNaN(qtyVal)) totalQty += qtyVal; 
                 });
                 
@@ -322,10 +322,15 @@
                         dealer: dealerName.replace(/\(주\)/g,'').trim(), 
                         size: String(r[cIdx.size]||'-'), pttn: String(r[cIdx.pttn]||'-'),
                         type: String(r[cIdx.type]||'기타'), mtp: String(r[cIdx.mtp]||'기타'),
-                        qty: 0
+                        qty: 0,
+                        monthlyQty: {} // 월별 수량 그릇
                     };
+                    for(let m=1; m<=12; m++) currMap[key].monthlyQty[m] = 0;
                 }
                 currMap[key].qty += totalQty;
+                for(let m=1; m<=maxAvailableMonth; m++) {
+                    currMap[key].monthlyQty[m] += (monthlyQty[m] || 0);
+                }
             }
 
             let hHeadIdx = 0;
@@ -357,8 +362,12 @@
                 mappedKeys.add(histKey);
                 
                 let actualYtd = 0;
+                let actualMonthlyQty = {};
+                for(let m=1; m<=12; m++) actualMonthlyQty[m] = 0;
+
                 if(currMap[histKey]) {
                     actualYtd = currMap[histKey].qty;
+                    actualMonthlyQty = currMap[histKey].monthlyQty;
                     currMap[histKey].qty = 0; 
                 }
 
@@ -368,6 +377,7 @@
                     dealer: String(r[idx.dealer]), type: String(r[idx.type]), mtp: String(r[idx.mtp]),
                     size: String(r[idx.size]||'-'), pttn: String(r[idx.pttn]||'-'),
                     ytd: actualYtd, 
+                    monthlyQty: actualMonthlyQty, // 당월 계산용 데이터
                     ly_total: Math.max(0, parseFloat(r[idx.y25]) || 0),
                     atot: Math.max(0, parseFloat(r[idx.atot]) || 0), mAvg: mAvg
                 });
@@ -380,6 +390,7 @@
                         dealer: currMap[key].dealer, type: currMap[key].type, mtp: currMap[key].mtp,
                         size: currMap[key].size, pttn: currMap[key].pttn,
                         ytd: currMap[key].qty, 
+                        monthlyQty: currMap[key].monthlyQty,
                         ly_total: 0, atot: 0, mAvg: mAvg
                     });
                 }
@@ -433,11 +444,10 @@
             document.addEventListener('click', function(e) { if (e.target !== input && e.target !== list) list.classList.add('hidden'); });
         }
 
-        window.toggleDetail = function(idx) {
-            const el = document.getElementById('detail-' + idx);
-            if(el.classList.contains('hidden')) el.classList.remove('hidden');
-            else el.classList.add('hidden');
-        };
+        function toggleRow(id) { 
+            const el = document.getElementById(id); 
+            if(el) el.classList.toggle('hidden'); 
+        }
 
         function changeType(t) {
             currentType = t;
@@ -484,27 +494,41 @@
             const dMap = {};
             filtered.forEach(r => {
                 if(!dMap[r.dealer]) {
-                    dMap[r.dealer] = { ytd:0, ly_ytd:0, ly_total:0, atot:0, aytd:0, pcrDetails: {}, tbrDetails: {} };
+                    // 💡 monthTotal 추가
+                    dMap[r.dealer] = { ytd:0, ly_ytd:0, ly_total:0, atot:0, aytd:0, pcrDetails: {}, tbrDetails: {}, monthTotal: 0 };
                 }
-                dMap[r.dealer].ytd += r.ytd;
+                
+                dMap[r.dealer].ytd += r.ytd; // 메인화면용 전체 누적 유지 (원본 훼손 없음)
                 dMap[r.dealer].atot += r.atot;
                 dMap[r.dealer].ly_total += r.ly_total;
                 
                 let ytdW = 0, fullW = 0;
+                let currentYtdQty = 0; // 상세보기 누적용
+                let currentMonthQty = (r.monthlyQty && r.monthlyQty[selectedMonth]) ? r.monthlyQty[selectedMonth] : 0; // 상세보기 당월용
+
                 for(let m=1; m<=12; m++) {
                     fullW += r.mAvg[m];
-                    if(m <= selectedMonth) { ytdW += r.mAvg[m]; dMap[r.dealer].aytd += r.mAvg[m]; }
+                    if(m <= selectedMonth) { 
+                        ytdW += r.mAvg[m]; 
+                        dMap[r.dealer].aytd += r.mAvg[m]; 
+                        currentYtdQty += (r.monthlyQty && r.monthlyQty[m]) ? r.monthlyQty[m] : 0;
+                    }
                 }
                 const ratio = (fullW > 0) ? (ytdW / fullW) : (selectedMonth / 12);
                 dMap[r.dealer].ly_ytd += (r.ly_total * ratio);
 
+                // 💡 상세보기 총 합계 누적
+                dMap[r.dealer].monthTotal += currentMonthQty;
+
                 if(r.type === 'PSR') {
-                    if(!dMap[r.dealer].pcrDetails[r.pttn]) dMap[r.dealer].pcrDetails[r.pttn] = 0;
-                    dMap[r.dealer].pcrDetails[r.pttn] += r.ytd;
+                    if(!dMap[r.dealer].pcrDetails[r.pttn]) dMap[r.dealer].pcrDetails[r.pttn] = {y:0, m:0};
+                    dMap[r.dealer].pcrDetails[r.pttn].y += currentYtdQty;
+                    dMap[r.dealer].pcrDetails[r.pttn].m += currentMonthQty;
                 } else if (r.type === 'TBR') {
                     const key = `${r.size}|${r.pttn}`;
-                    if(!dMap[r.dealer].tbrDetails[key]) dMap[r.dealer].tbrDetails[key] = 0;
-                    dMap[r.dealer].tbrDetails[key] += r.ytd;
+                    if(!dMap[r.dealer].tbrDetails[key]) dMap[r.dealer].tbrDetails[key] = {y:0, m:0};
+                    dMap[r.dealer].tbrDetails[key].y += currentYtdQty;
+                    dMap[r.dealer].tbrDetails[key].m += currentMonthQty;
                 }
             });
 
@@ -572,42 +596,79 @@
                 const py = d.aytd > 0 ? Math.ceil((d.ytd/d.aytd)*100) : 0;
                 const pt = d.atot > 0 ? Math.ceil((d.ytd/d.atot)*100) : 0;
                 const yoyDeal = d.ly_ytd > 0 ? Math.ceil(((d.ytd/d.ly_ytd)-1)*100) : 0;
+                const detailId = `detail-${idx}`;
+                const cho = getChosung(n).replace(/\s+/g, '');
                 
-                const pcrKeys = Object.keys(d.pcrDetails).filter(k => d.pcrDetails[k] !== 0).sort((a,b) => d.pcrDetails[b] - d.pcrDetails[a]);
+                // 💡 [수정] 수량이 0이 아닌 것만 필터링, 정렬 기준 누적(y) 순으로 변경
+                const pcrKeys = Object.keys(d.pcrDetails).filter(k => d.pcrDetails[k].y !== 0 || d.pcrDetails[k].m !== 0).sort((a,b) => d.pcrDetails[b].y - d.pcrDetails[a].y);
                 
-                const tbrKeys = Object.keys(d.tbrDetails).filter(k => d.tbrDetails[k] !== 0).sort((a,b) => {
+                const tbrKeys = Object.keys(d.tbrDetails).filter(k => d.tbrDetails[k].y !== 0 || d.tbrDetails[k].m !== 0).sort((a,b) => {
                     const sizeA = a.split('|')[0].trim();
                     const sizeB = b.split('|')[0].trim();
                     if (sizeA !== sizeB) return sizeA.localeCompare(sizeB);
-                    return d.tbrDetails[b] - d.tbrDetails[a];
+                    return d.tbrDetails[b].y - d.tbrDetails[a].y;
                 });
                 
-                let detailHtml = `<div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm inline-block min-w-[240px]">`;
+                // 💡 [핵심 핀셋 수정] 상세보기 패널에 당월, 누적, 합계 추가 및 모바일 최적화 (가로스크롤 방지)
+                let detailHtml = `<div class="bg-white p-3 md:p-4 rounded-xl border border-slate-200 shadow-sm w-full box-border">`;
+                
+                detailHtml += `<div class="mb-3 pb-2 border-b border-slate-100 flex justify-between items-end">
+                    <span class="text-[11px] font-bold text-slate-500">당월(<span class="text-slate-700">${selectedMonth}월</span>) 총 합계</span>
+                    <span class="text-sm font-black text-red-600">${Math.ceil(d.monthTotal).toLocaleString()}본</span>
+                </div>`;
                 
                 if(pcrKeys.length > 0) {
                     detailHtml += `<div class="mb-3">
-                        <h4 class="font-black text-[10px] text-slate-400 mb-1 border-b border-slate-50 pb-1 uppercase">PCR 패턴별 올해 누적</h4>
-                        <table class="w-full text-left text-[10px] text-slate-600"><tbody>
-                            ${pcrKeys.map(k => `<tr><td class="py-1 pr-4 whitespace-nowrap text-slate-700 font-bold">${k}</td><td class="text-right font-black ${d.pcrDetails[k] < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.pcrDetails[k]).toLocaleString()}</td></tr>`).join('')}
-                        </tbody></table>
+                        <h4 class="font-black text-[10px] text-slate-400 mb-1.5 uppercase">PCR 패턴별 실적</h4>
+                        <table class="w-full text-left text-[10px] md:text-xs text-slate-600">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-50">
+                                    <th class="pb-1 font-medium pl-1">패턴</th>
+                                    <th class="pb-1 text-right font-medium">당월<span class="text-[8px] md:text-[9px]">(${selectedMonth}월)</span></th>
+                                    <th class="pb-1 text-right font-medium pr-1">누적<span class="text-[8px] md:text-[9px]">(1~${selectedMonth}월)</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                ${pcrKeys.map(k => `
+                                    <tr class="hover:bg-slate-50/50 transition-colors">
+                                        <td class="py-1.5 md:py-2 pl-1 whitespace-nowrap text-slate-700 font-bold">${k}</td>
+                                        <td class="py-1.5 md:py-2 text-right text-slate-500 font-bold">${Math.ceil(d.pcrDetails[k].m).toLocaleString()}</td>
+                                        <td class="py-1.5 md:py-2 text-right font-black pr-1 ${d.pcrDetails[k].y < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.pcrDetails[k].y).toLocaleString()}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>`;
                 }
 
                 if(tbrKeys.length > 0) {
                     detailHtml += `<div>
-                        <h4 class="font-black text-[10px] text-slate-400 mb-1 border-b border-slate-50 pb-1 uppercase">TBR 규격/패턴별 올해 누적</h4>
-                        <table class="w-full text-left text-[10px] text-slate-600"><tbody>
-                            ${tbrKeys.map(k => {
-                                const parts = k.split('|');
-                                return `<tr><td class="py-1 pr-4 whitespace-nowrap"><span class="font-bold text-slate-700">${parts[0].trim()}</span> <span class="text-slate-400 text-[9px] ml-1">${parts[1].trim()}</span></td><td class="text-right font-black ${d.tbrDetails[k] < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.tbrDetails[k]).toLocaleString()}</td></tr>`;
-                            }).join('')}
-                        </tbody></table>
+                        <h4 class="font-black text-[10px] text-slate-400 mb-1.5 uppercase">TBR 규격/패턴별 실적</h4>
+                        <table class="w-full text-left text-[10px] md:text-xs text-slate-600">
+                            <thead>
+                                <tr class="text-slate-400 border-b border-slate-50">
+                                    <th class="pb-1 font-medium pl-1">규격 & 패턴</th>
+                                    <th class="pb-1 text-right font-medium">당월<span class="text-[8px] md:text-[9px]">(${selectedMonth}월)</span></th>
+                                    <th class="pb-1 text-right font-medium pr-1">누적<span class="text-[8px] md:text-[9px]">(1~${selectedMonth}월)</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                ${tbrKeys.map(k => {
+                                    const parts = k.split('|');
+                                    return `<tr class="hover:bg-slate-50/50 transition-colors">
+                                        <td class="py-1.5 md:py-2 pl-1 whitespace-nowrap"><span class="font-bold text-slate-700">${parts[0].trim()}</span> <span class="text-slate-400 text-[9px] md:text-[10px] ml-1">${parts[1].trim()}</span></td>
+                                        <td class="py-1.5 md:py-2 text-right text-slate-500 font-bold">${Math.ceil(d.tbrDetails[k].m).toLocaleString()}</td>
+                                        <td class="py-1.5 md:py-2 text-right font-black pr-1 ${d.tbrDetails[k].y < 0 ? 'text-blue-600' : 'bstk-red'}">${Math.ceil(d.tbrDetails[k].y).toLocaleString()}</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
                     </div>`;
                 }
                 detailHtml += '</div>';
 
                 return `
-                <tr class="hover:bg-slate-50 transition-colors cursor-pointer group" onclick="toggleDetail(${idx})">
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer group dealer-row" data-name="${n}" data-cho="${cho}" onclick="toggleRow('${detailId}')">
                     <td class="px-4 py-4 sticky-col font-bold dealer-name-cell bg-white group-hover:bg-slate-50 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                         <div class="flex items-center justify-between w-full h-full">
                             <span class="truncate pr-1">${n}</span>
@@ -635,9 +696,9 @@
                         </div>
                     </td>
                 </tr>
-                <tr id="detail-${idx}" class="hidden detail-row bg-slate-50/50">
+                <tr id="${detailId}" class="hidden detail-row bg-slate-50/50">
                     <td colspan="7" class="p-0 border-b border-slate-100 relative">
-                        <div class="sticky left-0 inline-block p-3 max-w-[100vw]">
+                        <div class="sticky left-0 inline-block p-2 md:p-3 w-[calc(100vw-32px)] md:w-full box-border">
                             ${(pcrKeys.length===0 && tbrKeys.length===0) ? '<div class="p-4 text-xs text-slate-400">당해 실적 없음</div>' : detailHtml}
                         </div>
                     </td>
