@@ -1,16 +1,13 @@
 name: Sales Data Hourly Update
 
+# 💡 스케줄(cron)을 삭제하여 GAS 리모컨 신호에만 반응하도록 설정함
 on:
-  schedule:
-    # 월-금, 한국시간 09:10 ~ 20:10 (매시간 10분 실행)
-    - cron: '10 0-11 * * 1-5'
   workflow_dispatch: 
 
-# 💡 최신 Node.js 24 환경을 강제로 사용하여 경고를 제거합니다.
+# 최신 Node.js 환경 사용 및 쓰기 권한 설정
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-# 403 에러 방지를 위한 필수 쓰기 권한
 permissions:
   contents: write
 
@@ -38,5 +35,5 @@ jobs:
       - name: 변경사항 깃허브에 반영
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "매시간 자동 업데이트 완료 (Node 24 적용)"
+          commit_message: "GAS 리모컨 신호에 의해 자동 업데이트 완료"
           file_pattern: 'current_sales.xlsx'
